@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.IProgDAO">
+	
+	<update id="updateEstimateProg" parameterType="vo.order.EstimateVO">
+	UPDATE OR_ESTIMATE
+    SET
+        EST_PROG = NVL(#{est_prog}, 'OR01')
+	WHERE
+    	EST_NO = #{est_no}
+	</update>
+	
+	<update id="updateOrderProg" parameterType="vo.order.OrderVO">
+	UPDATE ORDERP
+	SET
+	   	OR_STATUS = NVL(#{or_status}, 'OR01')
+	WHERE
+	    OR_NO = #{or_no}
+	</update>
+	
+	<update id="updateDeliveryProg" parameterType="vo.order.DeliveryOrderVO">
+	UPDATE OR_DELIVERY
+	SET
+	    DELIV_PROG = NVL(#{deliv_prog}, 'OR01')
+	WHERE
+	    DELIV_NO = #{deliv_no}	
+	</update>
+	
+	<update id="updateShipmentProg" parameterType="vo.order.ShipmentVO">
+	UPDATE OR_SHIPMENT
+	SET
+	   SHIP_PROG = NVL(#{ship_prog}, 'OR01')
+	WHERE
+	    SHIP_NO = #{ship_no}
+	</update>
+
+</mapper>

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  [[개정이력(Modification Information)]]       -->
+<!--  	수정일      		수정자  		 수정내용               	-->
+<!--  ==========   ======    ==============     -->
+<!--  2020. 7. 2        송효진    		 최초작성              	-->
+<!--  Copyright (c) 2020 by DDIT All right reserved -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.buy.IBuy_OrderDAO">
+	
+	<!-- 발주서 등록 -->
+	<insert id="insertBuyOrder" parameterType="Buy_OrderVO">
+		<selectKey resultType="int" keyProperty="or_code" order="BEFORE">
+			SELECT NVL(MAX(OR_CODE), 0)+1 FROM BUY_ORDER
+		</selectKey>
+		INSERT ALL
+		INTO BUY_ORDER(
+			OR_CODE, EMP_NO, BUYER_NO, OR_DATE, REQ_DATE, STATUS
+		) VALUES(
+			#{or_code}, #{emp_no,jdbcType=VARCHAR}, #{buyer_no,jdbcType=VARCHAR}
+			, sysdate, #{req_date,jdbcType=DATE}, 'Q001'
+		)
+		<if test="itemList != null">
+			<foreach collection="itemList" item="item" index="idx">
+				INTO BUY_ITEM (
+					ITEM_NO, OR_CODE, ITEM_NAME, ITEM_QTY, ITEM_COST, ITEM_LPROD, ITEM_STAND_SIZE
+				) VALUES(
+					#{item.item_no,jdbcType=VARCHAR}, #{or_code}, #{item.item_name,jdbcType=VARCHAR}
+					, #{item.item_qty,jdbcType=NUMERIC}, #{item.item_cost,jdbcType=NUMERIC}
+					, #{item.item_lprod,jdbcType=VARCHAR}, #{item.item_stand_size,jdbcType=VARCHAR}
+				)
+			</foreach>
+		</if>
+		SELECT * FROM DUAL
+	</insert>
+	<insert id="insertBuyOrderMatList" parameterType="Buy_OrderVO">
+		INSERT ALL
+		<if test="matList != null">
+			<foreach collection="matList" item="mat" index="idx">
+				INTO BUY_OR_MAT(
+					ORMAT_CODE, MAT_NO, OR_CODE, ORMAT_QTY, COST, BUY_NO
+				) VALUES(
+					#{mat.ormat_code,jdbcType=NUMERIC}, #{mat.mat_no,jdbcType=VARCHAR}, #{or_code}
+					, #{mat.ormat_qty,jdbcType=NUMERIC}, #{mat.cost,jdbcType=NUMERIC}, #{mat.buy_no,jdbcType=NUMERIC}
+				)
+			</foreach>
+		</if>
+		SELECT * FROM DUAL
+	</insert>
+	<!-- 발주 원자재 pk -->
+	<select id="selectBuyOrderMatPK" resultType="int">
+		SELECT NVL(MAX(ORMAT_CODE), 0)+1 FROM BUY_OR_MAT
+	</select>
+	<!-- 일반 발주 pk -->
+	<select id="selectBuyOrderItemPK" resultType="int">
+		SELECT SUBSTR(NVL(MAX(ITEM_NO), '00'),2)+1 FROM BUY_ITEM WHERE ITEM_NO LIKE 'I%'
+	</select>
+	
+	
+	<!-- 검색 -->
+	<sql id="searchFrag">
+		FROM (
+		    SELECT O.ORMAT_CODE, O.BUY_NO, O.OR_CODE, O.ORMAT_QTY QTY, COST, M.MAT_NAME NAME, 
+		    	   LP.LPROD_NAME LPROD, M.MAT_STAND_SIZE STAND, M.MAT_NO NO
+		    FROM BUY_OR_MAT O LEFT OUTER JOIN MATERIAL M ON(M.MAT_NO = O.MAT_NO)
+		                      LEFT OUTER JOIN LPROD LP ON (LP.LPROD_NO = M.LPROD_NO)
+		        UNION
+		    SELECT NULL, NULL, OR_CODE, ITEM_QTY QTY, ITEM_COST COST, ITEM_NAME NAME, 
+		    	   ITEM_LPROD LPROD, ITEM_STAND_SIZE STAND, ITEM_NO NO
+		    FROM BUY_ITEM
+		) MI LEFT OUTER JOIN BUY_ORDER O ON(MI.OR_CODE=O.OR_CODE)
+		     LEFT OUTER JOIN EMPLOYEE E ON(O.EMP_NO=E.EMP_NO)
+		     LEFT OUTER JOIN DEPARTMENT D ON(E.DEP_NO=D.DEP_NO)
+		     LEFT OUTER JOIN BUYER B ON(O.BUYER_NO=B.BUYER_NO)
+		     LEFT OUTER JOIN BUY_PURCHASE P ON(O.OR_CODE=P.OR_CODE)
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="'Q001'.equals(detailSearch.status)">	<!-- 발주 진행중 -->
+					P.PUR_CODE IS NULL
+					AND O.STATUS LIKE 'Q001'
+				</if>
+				<if test="'Q002'.equals(detailSearch.status)">	<!-- 매입완료 -->
+					P.PUR_CODE IS NOT NULL
+				</if>
+				<if test="'Q004'.equals(detailSearch.status)">	<!-- 발주 취소 -->
+					P.PUR_CODE IS NULL
+					AND O.STATUS LIKE 'Q004'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.or_date)">
+					AND O.OR_DATE >= TO_DATE(#{detailSearch.or_date}) 
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.or_dateEnd)">
+					<![CDATA[
+					AND	O.OR_DATE < TO_DATE(#{detailSearch.or_dateEnd})+1
+					]]>
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+					AND E.EMP_NO = #{detailSearch.emp_no}
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.buyer_no)">
+					AND B.BUYER_NO = #{detailSearch.buyer_no}
+				</if>
+			</if>
+		</trim>
+	</sql>
+	<select id="selectBuyOrderCount" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+	    <include refid="searchFrag"/>
+	</select>
+	<!-- 발주서 리스트 -->
+	<resultMap type="Buy_OrderVO" id="orderMap" autoMapping="true">
+		<id property="or_code" column="OR_CODE"/>
+		<association property="buyerVO" javaType="BuyerVO" autoMapping="true"/>
+		<collection property="unionList" javaType="java.util.List" ofType="Buy_Order_UnionVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectBuyOrderList" parameterType="PagingVO" resultMap="orderMap">
+		SELECT A.*
+		FROM(
+			SELECT MI.ORMAT_CODE, MI.BUY_NO, O.OR_CODE, MI.QTY , COST, MI.NAME MAT_NAME, MI.LPROD, MI.STAND STAND_SIZE, MI.NO MAT_NO,
+			       O.EMP_NO, O.BUYER_NO, TO_CHAR(O.OR_DATE,'YYYY-MM-DD') OR_DATE, TO_CHAR(O.REQ_DATE,'YYYY-MM-DD') REQ_DATE,
+			       E.EMP_NAME, D.DEP_NAME, B.BUYER_NAME
+			<include refid="searchFrag" />
+			ORDER BY O.OR_CODE DESC
+		) A
+		WHERE OR_CODE BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	
+	
+	<!-- 발주서로 보낼 구매요청 목록 -->
+	<resultMap type="Buy_Doc_MatVO" id="matMap" autoMapping="true">
+		<id property="mat_no" column="MAT_NO"/>
+		<id property="buy_no" column="BUY_NO"/>
+		<association property="matVO" javaType="MaterialVO" autoMapping="true">
+			<association property="lprodVO" javaType="LprodVO" autoMapping="true"/>
+		</association>
+	</resultMap>
+	<select id="selectBuyDocMatList" resultMap="matMap">
+		SELECT *
+		FROM BUY_DOC_MAT DM INNER JOIN MATERIAL M ON (DM.MAT_NO=M.MAT_NO)
+							INNER JOIN LPROD LP ON(M.LPROD_NO=LP.LPROD_NO)
+		WHERE DOC_STATUS LIKE 'Q001'
+		ORDER BY BUY_NO DESC
+	</select>
+	
+	<!-- 요청항목 원자재 삭제 -->
+	<update id="deleteDocMat" parameterType="Buy_Doc_MatVO">
+		UPDATE BUY_DOC_MAT 
+		SET DOC_STATUS = 'Q003' 
+		WHERE BUY_NO=#{buy_no} AND MAT_NO=#{mat_no}
+	</update>
+	
+	
+	<!-- 발주서 삭제 -->
+	<delete id="deleteBuyOder" parameterType="int">
+		UPDATE BUY_ORDER SET STATUS = 'Q004' 
+		WHERE OR_CODE IN (
+			<foreach collection="or_codeList" item="orCode" separator=",">
+				#{orCode}
+			</foreach>
+		)
+	</delete>
+	<!-- 발주서 삭제에 따른, 구매요청서목록 상태값 변경 -->
+	<update id="updateDocStatus" parameterType="Buy_OrderVO">
+		UPDATE BUY_DOC_MAT
+	    SET DOC_STATUS = 'Q004'
+	    WHERE BUY_NO IN (
+	        SELECT BUY_NO
+	        FROM BUY_OR_MAT
+	        WHERE OR_CODE IN (
+	        	<foreach collection="or_codeList" item="orCode" separator=",">
+					#{orCode}
+				</foreach>
+	        )
+	        AND BUY_NO IS NOT NULL
+	    )
+	</update>
+	
+</mapper>
+

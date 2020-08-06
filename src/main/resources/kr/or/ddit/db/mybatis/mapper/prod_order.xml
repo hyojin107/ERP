@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.product.IproOrderDao">
+
+
+
+<resultMap type="PductorderVO" id=""></resultMap>
+
+
+<sql id="searchFrag">
+		<where>
+		A.PORDER_CONFIRM = 'N'
+			<if test="searchVO!=null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+				<when test="'emp'.equals(searchVO.searchType) ">
+				AND D.EMP_NAME LIKE '%' || #{searchVO.searchWord} || '%'
+				</when>
+				<when test="'orderno'.equals(searchVO.searchType) ">
+				AND A.PORDER_NO LIKE '%' || #{searchVO.searchWord} || '%'
+				</when>
+				<otherwise>
+				AND D.EMP_NAME LIKE '%' || #{searchVO.searchWord} || '%' or
+				A.PORDER_NO LIKE '%' || #{searchVO.searchWord} || '%'
+				</otherwise>
+				</choose>
+				
+			</if>
+		</where>
+	</sql>
+
+<select id="SelectListprodOrder" parameterType="PagingVO" resultType="PductorderVO">
+
+SELECT B.*
+FROM(
+ SELECT A.*, ROWNUM RNUM
+  FROM(
+  SELECT A.PORDER_NO,D.EMP_NAME,C.PROD_NAME, A.PORDER_DATE
+  FROM PDUCT_OR
+A INNER JOIN PDUCT_LIST B ON (A.PORDER_NO = B.PORDER_NO)
+INNER JOIN PROD C ON (B.PROD_NO = C.PROD_NO)
+INNER JOIN employee D ON (A.EMP_NO = D.EMP_NO)
+ <include refid = "searchFrag"/>
+ORDER BY A.PORDER_DATE DESC
+) A ) B
+<![CDATA[
+		WHERE RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]>
+</select>
+
+<resultMap type="PductListVO" id="prodMap" autoMapping="true" >
+<id property="proder_no" column="PORDER_NO"/>
+<collection property="materiallist" javaType="java.util.List" ofType="MaterialVO" autoMapping="true" />
+</resultMap>
+
+<select id="SelectprodOrder" parameterType="string" resultMap="prodMap">
+SELECT A.PORDER_NO,A.PORDER_DATE, C.EMP_NAME, F.PROD_NAME, B.PDUCT_CNT ,E.MAT_NAME, D.MAT_NO, D.MAT_NUMBER  * B.PDUCT_CNT MAT_CNT
+FROM PDUCT_OR A INNER JOIN PDUCT_LIST B ON (A.PORDER_NO = B.PORDER_NO)
+INNER JOIN EMPLOYEE C ON (A.EMP_NO = C.EMP_NO)
+INNER JOIN BOM D ON (D.PROD_NO = B.PROD_NO)
+INNER JOIN PROD F ON (F.PROD_NO = B.PROD_NO)
+INNER JOIN MATERIAL E ON (E.MAT_NO = D.MAT_NO) 
+WHERE A.PORDER_NO = #{porder_no}
+
+</select>
+
+<insert id="InsertprodOrder" parameterType="PdReportVO" >
+
+<selectKey keyProperty="rep_no" resultType="string" order="BEFORE">
+SELECT TO_NUMBER(NVL(MAX(REP_NO)+1,'1')) FROM PROD_REPORT
+</selectKey>
+
+INSERT INTO PROD_REPORT(REP_NO,PORDER_NO, EMP_NO, REP_DATE,PDUCT_DISCNT )
+VALUES( #{rep_no,jdbcType = NUMERIC},#{porder_no, jdbcType = NUMERIC},#{emp_no},#{rep_date} , #{pduct_discnt})
+
+</insert>
+
+
+
+<update id="UpdateConfirmOrder" parameterType="int">
+update pduct_or set PORDER_CONFIRM = 'Y' where PORDER_NO = #{pdorder_no}
+</update>
+
+<select id="CountSelectprodOrder" parameterType="PagingVO" resultType="int">
+SELECT COUNT(*)
+FROM(
+ SELECT A.*, ROWNUM RNUM
+  FROM(
+  SELECT A.PORDER_NO,D.EMP_NAME,C.PROD_NAME, A.PORDER_DATE, B.PDUCT_CNT
+  FROM PDUCT_OR
+A INNER JOIN PDUCT_LIST B ON (A.PORDER_NO = B.PORDER_NO)
+INNER JOIN PROD C ON (B.PROD_NO = C.PROD_NO)
+INNER JOIN employee D ON (A.EMP_NO = D.EMP_NO)
+ <include refid="searchFrag"/>
+ORDER BY A.PORDER_DATE DESC
+) A ) B
+</select>
+
+
+<select id="SelectConfirmOrder" resultType="PductorderVO">
+
+SELECT B.*
+FROM(
+ SELECT A.*, ROWNUM RNUM
+  FROM(
+  SELECT A.PORDER_NO,D.EMP_NAME,C.PROD_NAME, A.PORDER_DATE,C.PROD_NO
+  FROM PDUCT_OR
+A INNER JOIN PDUCT_LIST B ON (A.PORDER_NO = B.PORDER_NO)
+INNER JOIN PROD C ON (B.PROD_NO = C.PROD_NO)
+INNER JOIN employee D ON (A.EMP_NO = D.EMP_NO)
+ WHERE A.PORDER_CONFIRM = 'Y'
+ORDER BY A.PORDER_DATE DESC
+) A ) B LEFT OUTER JOIN PROD_REPORT C ON (B.PORDER_NO = C.PORDER_NO)
+WHERE C.PORDER_NO IS NULL
+
+
+
+</select>
+
+
+
+
+</mapper>

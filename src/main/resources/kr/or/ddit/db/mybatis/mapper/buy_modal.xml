@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  [[개정이력(Modification Information)]]       -->
+<!--  	수정일      		수정자  		 수정내용               	-->
+<!--  ==========   ======    ==============     -->
+<!--  2020. 7. 2        송효진    		 최초작성              	-->
+<!--  Copyright (c) 2020 by DDIT All right reserved -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.buy.IModalViewDAO">
+
+	<!-- 원자재 목록 가져오기 -->
+	<resultMap type="MaterialVO" id="matMap" autoMapping="true">
+		<id property="mat_no" column="MAT_NO"/>
+		<association property="lprodVO" javaType="LprodVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectMatModal" resultMap="matMap">
+		SELECT ROWNUM RNUM, LPROD_NAME, MATERIAL.MAT_NO, MAT_NAME, MAT_STAND_SIZE 
+		FROM MATERIAL, LPROD
+		WHERE MATERIAL.LPROD_NO = LPROD.LPROD_NO
+		AND MAT_USE LIKE 'G001'
+	</select>
+	
+	<!-- 담당자(사원) 목록 -->
+	<resultMap type="EmployeeVO" id="empMap" autoMapping="true">
+		<id property="emp_no" column="EMP_NO"/>
+		<association property="depVO" javaType="DepartmentVO" autoMapping="true"/>
+		<association property="posVO" javaType="PositionVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectEmpModal" resultMap="empMap">
+		SELECT ROWNUM RNUM, E.EMP_NO, E.EMP_NAME, D.DEP_NAME, P.POS_NAME
+		FROM EMPLOYEE E INNER JOIN DEPARTMENT D ON(E.DEP_NO = D.DEP_NO)
+					    INNER JOIN POSITION P ON (E.POS_NO = P.POS_NO)
+	</select>
+	
+	<!-- 거래처 목록 -->
+	<select id="selectBuyerModal" resultType="vo.BuyerVO">
+		SELECT ROWNUM RNUM, BUYER_NO, BUYER_NAME, BUYER_REP, BUYER_ADDR, BUYER_SECTOR
+		FROM BUYER
+	</select>
+	
+</mapper>

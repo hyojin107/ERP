@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.IEstimateDAO">
+	<select id="selectAllProdLgu" resultType="hashMap">
+<!-- 		SELECT LPROD_NAME -->
+<!-- 		"lprod_no", LPROD_NM "LPROD_NAME" -->
+<!-- 		FORM LRPOD -->
+		SELECT LPROD_NO "lprod_no", LPROD_NAME "lprod_name"
+		FROM LPROD
+
+		
+
+	</select>
+	<select id="selectAllProd" resultType="hashMap" parameterType="string">
+		SELECT PROD_NO "prod_no", PROD_NAME "prod_name"
+		FROM PROD
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(lgu)">
+				LPROD_NO = #{lgu}
+			</if>
+		</where>
+		
+	</select>
+	<select id="selectProd" parameterType="string" resultType="vo.wareHouse.ProdVO">
+		SELECT * 
+		FROM PROD
+		WHERE PROD_NO = #{prod_no}
+	</select>
+
+</mapper>

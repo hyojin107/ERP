@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.emp.INoticeDAO">
+<sql id="searchFrag">
+		FROM NOTICE
+		<where>
+			<if test="searchVO!=null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="'title'.equals(searchVO.searchType)">
+						INSTR(NOTICE_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="'writer'.equals(searchVO.searchType)">
+						INSTR(NOTICE_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="'content'.equals(searchVO.searchType)">
+						INSTR(NOTICE_CONTENT, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						INSTR(NOTICE_TITLE, #{searchVO.searchWord}) > 0
+						OR INSTR(NOTICE_TITLE, #{searchVO.searchWord}) > 0
+						OR INSTR(NOTICE_CONTENT, #{searchVO.searchWord}) > 0
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	<select id="selectNoticeCount" resultType="int" parameterType="PagingVO">
+		select count(notice_no)
+		<include refid="searchFrag"/>
+	</select>
+	<!-- 공지사항 목록 나오는거  -->
+	<select id="selectNoticeList" resultType="NoticeVO" parameterType="PagingVO">
+		SELECT D.*
+		FROM(
+		SELECT ROWNUM RNUM, NOTICE_NO, C.DEP_NAME EMP_NO, NOTICE_TITLE, 
+				   NOTICE_DATE,	NOTICE_CONTENT, NOTICE_VIEW
+				   
+		FROM NOTICE A INNER JOIN  EMPLOYEE B ON(A.EMP_NO=B.EMP_NO)
+					INNER JOIN  DEPARTMENT C ON(B.DEP_NO = C.DEP_NO)
+		) D					   
+		WHERE RNUM BETWEEN #{startRow} AND #{endRow} 
+	</select>
+	
+	<resultMap type="NoticeVO" id="noticeMap" autoMapping="true">
+		<id property="notice_no" column="NONO"/>
+		<collection property="attatchList" javaType="java.util.List" ofType="AttatchVO" autoMapping="true"/>
+	</resultMap>
+	
+	<!--  행하나 클릭시 나오는 정보 -->
+	<select id="selectNotiece" parameterType="int" resultMap="noticeMap">
+		SELECT A.NOTICE_NO NONO, 	EMP_NO, 	NOTICE_TITLE, 	NOTICE_DATE
+				NOTICE_CONTENT, 	NOTICE_VIEW,
+				ATTATCH_CODE,       ATTATCH_NAME
+		FROM NOTICE A LEFT OUTER JOIN ATTATCH B ON (A.NOTICE_NO = B.NOTICE_NO)
+		WHERE A.NOTICE_NO = #{notice_no}		
+	</select>	
+	
+	<!-- 조회수 증가 -->
+	<update id="incrementHit" parameterType="int">
+			UPDATE NOTICE 
+			SET  NOTICE_VIEW = NOTICE_VIEW+1
+			WHERE NOTICE_NO = #{notice_no}
+	</update>
+	
+	<!--  글등록  -->
+	<insert id="insertNotice" parameterType="NoticeVO">
+		<selectKey resultType="int" keyProperty="notice_no" order="BEFORE">
+		 	SELECT NVL(MAX(NOTICE_NO), 0)+1 FROM NOTICE
+		</selectKey>
+		INSERT INTO NOTICE(
+			NOTICE_NO, EMP_NO, NOTICE_TITLE, NOTICE_DATE
+			NOTICE_CONTENT, NOTICE_VIEW
+		)VALUES(
+			#{notice_no,jdbcType=NUMERIC}, #{emp_no,jdbcType=VARCHAR}, #{notice_title,jdbcType=VARCHAR}, SYSDATE,
+			#{notice_content,jdbcType=CLOB}, 0
+		)
+	</insert>
+	
+	<!-- 글 수정  -->
+	<update id="updateNotice" parameterType="NoticeVO">
+		UPDATE NOTICE
+			SET
+			NOTICE_TITLE = #{notice_title, jdbcType=VARCHAR},
+			EMP_NO = #{emp_no, jdbcType=VARCHAR},
+			NOTICE_CONTENT =#{notice_content, jdbcType=CLOB}
+		WHERE
+			NOTICE_NO = #{notice_no,jdbcType=NUMERIC}	
+	
+	</update>
+	<!-- 게시글 삭제  -->
+	<delete id="deleteNotice" parameterType="NoticeVO">
+		DELETE FROM NOTICE
+		WHERE NOTICE_NO IN(
+			SELECT NOTICE_NO
+			FROM NOTICE
+			START WITH NOTICE_NO = #{notice_no}
+			
+		)
+	</delete>
+</mapper>

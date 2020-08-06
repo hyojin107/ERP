@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.wareHouse.IProdDAO">
+
+<sql id="searchFrag">
+	FROM
+	PROD A LEFT OUTER JOIN PROD_SECTOR B ON (A.PROD_NO = B.PROD_NO)
+	LEFT OUTER JOIN SECTOR C ON(B.SECTOR_NO = C.SECTOR_NO)
+	LEFT OUTER JOIN STORE D ON (C.STORE_NO = D.STORE_NO)
+	<trim prefix=" WHERE " prefixOverrides="AND|OR">
+		<if test="detailSearch!=null">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_name)">
+				A.PROD_NAME LIKE '%'||#{detailSearch.prod_name}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_no)">
+				AND	A.PROD_NO LIKE '%'||#{detailSearch.prod_no}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.lprod_no)">
+				AND A.LPROD_NO LIKE '%'||#{detailSearch.lprod_no}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_use)">
+				AND A.PROD_USE LIKE '%'||#{detailSearch.prod_use}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startDay) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endDay)">
+				<![CDATA[
+					AND A.PROD_VALIDITY >= #{detailSearch.startDay} AND A.PROD_VALIDITY < #{detailSearch.endDay}
+				]]> 
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startPrice) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endPrice)">
+				<![CDATA[
+					AND A.PROD_OUT_PRICE >= #{detailSearch.startPrice} AND A.PROD_OUT_PRICE < #{detailSearch.endPrice}
+				]]> 
+			</if>
+		</if>
+	</trim>
+</sql>
+
+<!-- 상품 갯수 -->
+<select id="readProdCount" resultType="int" parameterType="PagingVO">
+	SELECT COUNT(A.PROD_NO)
+	<include refid="searchFrag"/>
+</select>
+
+<!-- 상품 목록 -->
+<select id="readProdList" resultType="ProdVO" parameterType="PagingVO">
+	SELECT DISTINCT Z.*
+	FROM (
+		select DISTINCT ROWNUM RNUM,
+		A.prod_no, A.lprod_no, A.prod_name, A.prod_use
+	 	, A.prod_stock_size, to_char(A.prod_validity,'YYYY-MM-DD') prod_validity, A.prod_out_price
+	 	, A.prod_stock , A.prod_safe_stock , A.prod_stand_size, A.prod_standard
+	 	, C.SECTOR_NO, D.STORE_NO
+	 	<include refid="searchFrag"/>
+	) Z
+ 	ORDER BY RNUM
+</select>
+
+<resultMap type="ProdVO" id="prodMap" autoMapping="true">
+	<id property="prod_no" column="PROD_NO"/>
+	<association property="lprod_no" javaType="String" autoMapping="true">
+		<result property="" column="LPROD_NO"/>
+	</association>
+	<collection property="bomlist" javaType="java.util.List" autoMapping="true" ofType="BOMVO">
+		<result property="mat_no" column="MAT_NO"/>
+		<association property="matVO" javaType="MaterialVO" autoMapping="true"/>
+	</collection>
+</resultMap>
+
+<!-- 상품 상세보기 -->
+<select id="readProd" parameterType="string" resultMap="prodMap">
+	SELECT 
+		F.MAT_NAME
+		, E.MAT_NO, E.MAT_NUMBER, E.MAT_SIZE 
+        , A.prod_no, A.lprod_no, A.prod_name, A.prod_use
+	 	, A.prod_stock_size, TO_CHAR(A.prod_validity,'YYYY-MM-DD') prod_validity, A.prod_out_price
+	 	, A.prod_stock , A.prod_safe_stock , A.prod_stand_size, A.prod_standard
+	 	, B.SECTOR_NO, C.SECTOR_NO, D.STORE_NO
+	FROM 
+		PROD A LEFT OUTER JOIN PROD_SECTOR B ON (A.PROD_NO = B.PROD_NO)
+		LEFT OUTER JOIN SECTOR C ON(B.SECTOR_NO = C.SECTOR_NO)
+		LEFT OUTER JOIN STORE D ON (C.STORE_NO = D.STORE_NO)
+        LEFT OUTER JOIN BOM E ON(A.PROD_NO = E.PROD_NO)
+        LEFT OUTER JOIN MATERIAL F ON(E.MAT_NO = F.MAT_NO)
+	WHERE A.PROD_NO=#{prod_no}
+</select>
+
+<!-- BOM 원자재 검색 -->
+<sql id="matSearchFrag">
+	FROM MATERIAL A LEFT OUTER JOIN MAT_SECTOR B ON(A.MAT_NO = B.MAT_NO)
+		 LEFT OUTER JOIN SECTOR C ON(B.SECTOR_NO = C.SECTOR_NO)
+		 LEFT OUTER JOIN STORE D ON(C.STORE_NO = D.STORE_NO)
+	WHERE C.SECTOR_NO IS NOT NULL AND D.STORE_NO IS NOT NULL
+	<trim prefixOverrides="AND /OR">
+		<if test="detailSearch!=null">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_name)">
+				AND A.MAT_NAME LIKE '%'||#{detailSearch.mat_name}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_use)">
+				AND MAT_USE = #{detailSearch.mat_use}
+			</if>
+		</if>
+	</trim>
+</sql>
+<select id="searchMatCnt" resultType="int" parameterType="PagingVO">
+	SELECT COUNT(*) <include refid="matSearchFrag"/>
+</select>
+
+<select id="searchMatList" resultType="MaterialVO" parameterType="vo.PagingVO">
+	SELECT A.MAT_NO,MAT_NAME,LPROD_NO,MAT_USE, MAT_STOCK_SIZE , B.SECTOR_NO
+	<include refid="matSearchFrag"/>
+</select>
+
+<!-- autocomplate 원자재 이름 출력  -->
+<select id="serarchMatNameList" resultType="String">
+	SELECT MAT_NAME FROM MATERIAL
+</select>
+
+<!-- 상품 등록 -->
+<insert id="insertProd" parameterType="ProdVO">
+	<selectKey resultType="string" keyProperty="prod_no" order="BEFORE">
+		SELECT 'P' || LPAD(TO_NUMBER(SUBSTR(MAX(PROD_NO),2))+1,4,'0')
+		FROM PROD
+	</selectKey>
+	INSERT all INTO prod (
+	    prod_no,lprod_no,
+	    prod_name,prod_use,
+	    prod_stock_size,prod_validity,
+	    prod_out_price,prod_stock,
+	    prod_safe_stock,prod_stand_size,
+	    prod_standard
+	)
+	VALUES (#{prod_no,jdbcType=VARCHAR},#{lprod_no,jdbcType=VARCHAR}
+			,#{prod_name,jdbcType=VARCHAR},#{prod_use,jdbcType=VARCHAR}
+			,#{prod_stock_size,jdbcType=VARCHAR},#{prod_validity,jdbcType=DATE}
+			,#{prod_out_price,jdbcType=NUMERIC},0
+			,#{prod_safe_stock,jdbcType=NUMERIC},#{prod_stand_size,jdbcType=VARCHAR}
+			,#{prod_standard,jdbcType=VARCHAR})
+	<if test="bomlist!=null">
+		<foreach collection="bomlist" item="bom">
+			INTO BOM (prod_no, mat_no, mat_number, mat_size)
+			VALUES (#{prod_no,jdbcType=VARCHAR},#{bom.mat_no,jdbcType=VARCHAR},#{bom.mat_number,jdbcType=NUMERIC},#{bom.mat_size,jdbcType=VARCHAR})
+		</foreach>
+	</if>
+	SELECT * FROM DUAL
+</insert>
+
+<!-- bomlist 출력 -->
+<select id="readBomList" parameterType="string" resultMap="prodMap">
+	SELECT PROD_NO, MAT_NO, MAT_NUMBER, MAT_SIZE 
+	FROM BOM 
+	WHERE PROD_NO LIKE #{prod_no}
+</select>
+
+<!-- 상품 정보 수정 -->
+<update id="modifyProd" parameterType="ProdVO">
+	UPDATE PROD
+	SET 
+	prod_name = #{prod_name,jdbcType=VARCHAR} 
+	,lprod_no = #{lprod_no,jdbcType=CHAR}
+	,prod_standard =#{prod_standard,jdbcType=VARCHAR}
+	,prod_stand_size = #{prod_stand_size,jdbcType=VARCHAR}
+	,prod_out_price = #{prod_out_price,jdbcType=NUMERIC}
+	,prod_safe_stock =#{prod_safe_stock,jdbcType=NUMERIC}
+	,prod_stock_size =#{prod_stock_size,jdbcType=VARCHAR}
+	,prod_validity = #{prod_validity,jdbcType=DATE}
+	,prod_use = #{prod_use,jdbcType=CHAR}
+	WHERE prod_no = #{prod_no} 
+</update>
+
+<!-- bom 수정 -->
+<update id="modifyBOM" parameterType="BOMVO">
+	MERGE INTO BOM
+	USING DUAL
+	    ON ( PROD_NO = #{prod_no,jdbcType=CHAR} AND MAT_NO =#{mat_no,jdbcType=CHAR})
+	WHEN MATCHED THEN
+	    UPDATE SET mat_number = #{mat_number,jdbcType=NUMERIC}
+	WHEN NOT MATCHED THEN 
+	    INSERT (PROD_NO, MAT_NO, MAT_NUMBER, MAT_SIZE)
+	    VALUES (#{prod_no,jdbcType=CHAR},#{mat_no,jdbcType=CHAR},#{mat_number,jdbcType=NUMERIC},#{mat_size,jdbcType=VARCHAR})
+</update>
+</mapper>

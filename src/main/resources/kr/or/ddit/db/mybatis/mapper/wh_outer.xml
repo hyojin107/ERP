@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.wareHouse.IOuterDao">
+
+<!-- 상품 검색 Frag -->
+<sql id="prodSearchFrag">
+	FROM PROD A INNER JOIN PROD_SECTOR B ON(A.PROD_NO = B.PROD_NO) 
+	<![CDATA[
+		WHERE PROD_STOCK < PROD_SAFE_STOCK
+	]]> 
+	<trim prefixOverrides="AND /OR">
+		<if test="detailSearch!=null">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_name)">
+				AND PROD_NAME LIKE '%'||#{detailSearch.prod_name}||'%'
+			</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_no)">
+				AND	PROD_NO LIKE '%'||#{detailSearch.prod_no}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.lprod_no)">
+				AND LPROD_NO LIKE '%'||#{detailSearch.lprod_no}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_use)">
+				AND PROD_USE LIKE '%'||#{detailSearch.prod_use}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startDay) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endDay)">
+				<![CDATA[
+					AND PROD_VALIDITY >= #{detailSearch.startDay} AND PROD_VALIDITY < #{detailSearch.endDay}
+				]]> 
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startPrice) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endPrice)">
+				<![CDATA[
+					AND PROD_OUT_PRICE >= #{detailSearch.startPrice} AND PROD_OUT_PRICE < #{detailSearch.endPrice}
+				]]> 
+			</if>
+		</if>
+	</trim>
+</sql>
+
+<!-- 조건에 맞는 상품 갯수 -->
+<select id="ProdLackCnt" resultType="int" parameterType="PagingVO">
+	SELECT COUNT(*) 
+	<include refid="prodSearchFrag"/>
+</select>
+
+<!-- 조건에 맞는 상품 목록 -->
+<select id="ProdLackList" resultType="ProdVO" parameterType="PagingVO">
+	SELECT Z.*
+	FROM (
+		SELECT ROWNUM RNUM
+		, a.prod_no, lprod_no, prod_name, prod_use
+	 	, prod_stock_size, to_char(prod_validity,'YYYY-MM-DD') prod_validity, prod_out_price
+	 	, prod_stock , prod_safe_stock , prod_stand_size, prod_standard
+	 	<include refid="prodSearchFrag"/>
+	) Z
+	ORDER BY RNUM 
+</select>
+
+<!-- 생산의뢰서 검색 Frag -->
+<sql id="pductOrSearchFrag">
+	FROM PDUCT_OR A LEFT OUTER JOIN PDUCT_LIST B ON(A.PORDER_NO = B.PORDER_NO)
+		 INNER JOIN EMPLOYEE C ON(A.EMP_NO = C.EMP_NO)
+	<trim prefix=" WHERE " prefixOverrides="AND|OR">
+		<if test="detailSearch!=null">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_name)">
+				C.EMP_NAME LIKE '%'||#{detailSearch.emp_name}||'%'
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startDay) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endDay)">
+				<![CDATA[
+					AND A.PORDER_DATE >= #{detailSearch.startDay} AND A.PORDER_DATE < #{detailSearch.endDay}
+				]]> 
+			</if>	
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.porder_confirm)">
+				AND A.PORDER_CONFIRM LIKE '%'||#{detailSearch.porder_confirm}||'%'
+			</if>
+		</if>
+	</trim>
+</sql>
+
+<!-- 조건에 맞는 생산의뢰서 갯수  -->
+<select id="readPDuctORCnt" resultType="int" parameterType="PagingVO">
+	SELECT COUNT(*)
+	<include refid="pductOrSearchFrag"/>  
+</select>
+
+<!-- 조건에 맞는 생산의뢰서 목록 -->
+<select id="readPDuctORList" resultType="PDuct_OR_VO" parameterType="PagingVO">
+	SELECT Z.*
+	FROM (
+		select
+			ROWNUM RNUM, c.emp_name
+    		, a.porder_no, a.emp_no, to_char(porder_date,'YYYY-MM-DD') porder_date, A.porder_confirm
+    		, B.prod_no, B.pduct_no, B.pduct_cnt
+    		<include refid="pductOrSearchFrag"/>
+	) Z
+	ORDER BY RNUM
+</select>
+
+<resultMap type="PDuct_OR_VO" id="pductMap" autoMapping="true">
+	<id property="porder_no" column="PORDER_NO"/>
+		<collection property="pductList" javaType="java.util.List" ofType="PDuct_List_VO" autoMapping="true">
+			<id property="prod_no" column="PROD_NO"/>
+				<association property="prodvo" javaType="ProdVO" autoMapping="true">
+					<id property="prod_no" column="PROD_NO"/>
+						<collection property="bomlist" javaType="java.util.List" ofType="BOMVO" autoMapping="true">
+								<result property="mat_no" column="MAT_NO"/>
+							<collection property="matList" javaType="java.util.List" ofType="MaterialVO" autoMapping="true"/>
+						</collection>
+				</association>
+		</collection>
+</resultMap>
+
+<!-- 생산의뢰서 상세보기  -->
+<select id="readPDuctOR" parameterType="int" resultMap="pductMap">
+	SELECT 
+	  	A.PORDER_NO, A.EMP_NO, to_char(porder_date,'YYYY-MM-DD') PORDER_DATE, A.PORDER_CONFIRM
+	    , B.PROD_NO, B.PDUCT_NO, B.PDUCT_CNT
+	    , C.EMP_NAME
+	    , D.PROD_NO, D.PROD_NAME
+	    , E.MAT_NUMBER , E.MAT_SIZE, E.MAT_NO
+	    , F.MAT_NAME
+	FROM PDUCT_OR A LEFT OUTER JOIN PDUCT_LIST B ON(A.PORDER_NO = B.PORDER_NO)
+	LEFT OUTER JOIN EMPLOYEE C ON(A.EMP_NO = C.EMP_NO)
+	LEFT OUTER JOIN PROD D ON(B.PROD_NO = D.PROD_NO)
+	LEFT OUTER JOIN BOM E ON(D.PROD_NO = E.PROD_NO)
+	LEFT OUTER JOIN MATERIAL F ON(E.MAT_NO = F.MAT_NO)
+	WHERE A.PORDER_NO = #{porder_no,jdbcType=NUMERIC}
+</select>
+
+<select id="selectPductOrPK" resultType="int">
+	select nvl(max(porder_no),0)+1 from pduct_or
+</select>
+
+<!-- 생산의뢰서 등록 pduct_or -->
+<insert id="insertPDuctOR" parameterType="PDuct_OR_VO">
+	INSERT ALL INTO PDUCT_OR(PORDER_NO, EMP_NO, PORDER_DATE, PORDER_CONFIRM)
+	VALUES (#{porder_no,jdbcType=NUMERIC}, #{emp_no,jdbcType=VARCHAR}, SYSDATE, 'N')
+	<foreach collection="pductList"  item="pduct">
+		INTO PDUCT_LIST (PDUCT_NO, PROD_NO, PORDER_NO, PDUCT_CNT)
+		VALUES (
+			#{pduct.pduct_no,jdbcType=NUMERIC}
+			,#{pduct.prod_no,jdbcType=VARCHAR}
+			,#{porder_no,jdbcType=NUMERIC}
+			,#{pduct.pduct_cnt,jdbcType=NUMERIC}
+			)
+	</foreach>
+	SELECT * FROM DUAL
+</insert>
+
+
+<!-- 생산의뢰서 목록 리스트 등록  pduct_list -->
+<select id="selectPductPK" resultType="int">
+	select nvl(max(pduct_no),0)+1 from pduct_list
+</select>
+
+<!-- 원자재 생산출고 pk mat_mf_out -->
+<select id="selectMatMfPK" resultType="int">
+	select nvl(max(mf_no),0)+1 from mat_mf_out
+</select>
+
+<!-- 원자재 생산출고 등록 mat_mf_out -->
+<insert id="insertMatMfOut" parameterType="PDuct_List_VO">
+	INSERT ALL 
+	<foreach collection="matOutList" item="matout">
+		INTO mat_mf_out (mf_no,mat_no,pduct_no,mf_date)
+    	VALUES(
+	    	#{matout.mf_no,jdbcType=NUMERIC}
+	    	,#{matout.mat_no,jdbcType=VARCHAR}
+	    	,#{matout.pduct_no,jdbcType=NUMERIC}
+	    	,sysdate
+    	)
+	</foreach>
+	SELECT * FROM DUAL
+</insert>
+
+<!-- 원자재 수량 업데이트 (생산수량 * BOM수량) foreach문 돌리기  -->
+<update id="updateMatStock" parameterType="Mat_MF_OutVO">
+	UPDATE MATERIAL M 
+		SET MAT_STOCK = (
+		    SELECT 
+		        (D.MAT_STOCK - (B.PDUCT_CNT * C.MAT_NUMBER))
+		    FROM 
+		        PDUCT_OR A LEFT OUTER JOIN PDUCT_LIST B ON(A.PORDER_NO = B.PORDER_NO)
+		        LEFT OUTER JOIN BOM C ON(C.PROD_NO = B.PROD_NO)
+		        INNER JOIN MATERIAL D ON(C.MAT_NO = D.MAT_NO)
+		    WHERE A.PORDER_NO = #{porder_no} AND D.MAT_NO LIKE #{mat_no}
+	    )
+	WHERE MAT_NO LIKE #{mat_no}
+</update>
+
+<!-- 원자재 창고 업데이트 -->
+<update id="updateMatSector" parameterType="Mat_MF_OutVO">
+	UPDATE MAT_SECTOR 
+		SET MAT_CNT = (
+		    SELECT 
+		        (E.MAT_CNT - (B.PDUCT_CNT * C.MAT_NUMBER))
+		    FROM 
+		        PDUCT_OR A LEFT OUTER JOIN PDUCT_LIST B ON(A.PORDER_NO = B.PORDER_NO)
+		        LEFT OUTER JOIN BOM C ON(C.PROD_NO = B.PROD_NO)
+		        INNER JOIN MATERIAL D ON(C.MAT_NO = D.MAT_NO)
+		        LEFT OUTER JOIN MAT_SECTOR E ON(D.MAT_NO = E.MAT_NO)
+		    WHERE A.PORDER_NO = #{porder_no} AND D.MAT_NO LIKE #{mat_no}
+		) 
+	WHERE MAT_NO LIKE #{mat_no} and sector_no = #{sector_no}
+</update>
+
+<!-- 출고신청서 검색 -->
+<sql id="outdocSearchFrag">
+	FROM (
+	   SELECT 'OR001' AS CODE, a.deliv_no as board_no, a.emp_no as emp_no, a.deliv_prog as deliv_prog
+            , to_char(a.deliv_date, 'YYYY-MM-DD') as write_date, b.emp_name as emp_name 
+            , c.dep_name as dep_name, c.dep_no as dep_no, c.dep_no2 as dep_no2
+            , d.or_no as or_no
+            , e.prod_no as prod_no, e.orp_qty as orp_qty
+            , f.prod_name as prod_name , f.prod_stock as prod_stock, f.prod_stock_size as prod_stock_size
+            , g.sector_no as sector_no , g.prod_cnt as prod_cnt, g.prod_sector as prod_sector
+	    FROM or_delivery a left outer join orderp d on(a.or_no = d.or_no)
+             left outer join or_plist e on (d.or_no = e.or_no)
+             left outer join prod f on (e.prod_no = f.prod_no)
+             left outer join prod_sector g on (f.prod_no = g.prod_no)
+             left outer join employee b on(a.emp_no = b.emp_no)
+	         left outer join department c on(b.dep_no = c.dep_no)
+        where g.sector_no is not null and g.prod_cnt is not null
+    )
+    <trim prefix="WHERE" prefixOverrides="AND">
+    	<if test="detailSearch!=null">
+    		<if test="'OR01'.equals(detailSearch.status)">
+    			DELIV_PROG LIKE 'OR01'
+    		</if>
+    		<if test="'OR02'.equals(detailSearch.status)">
+    			DELIV_PROG LIKE 'OR02'
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_name)">
+    			EMP_NAME LIKE '%'||#{detailSearch.emp_name}||'%'
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startDay) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endDay)">
+				<![CDATA[
+					AND WRITE_DATE >= #{detailSearch.startDay} AND WRITE_DATE <= #{detailSearch.endDay}
+				]]> 
+			</if>
+    	</if>
+    </trim>
+</sql>
+
+<!-- 조건에 맞는 출고신청 목록 갯수 (출하지시서) -->
+<select id="readOuterDocCnt" resultType="int" parameterType="PagingVO">
+	SELECT COUNT(*)
+	<include refid="outdocSearchFrag"/>
+</select>
+
+<!-- 조건에 맞는 출고신청서 list출력(출하지시서) -->
+<select id="readOuterDocList" resultType="OuterDocumentVO" parameterType="PagingVO">
+	SELECT Z.*
+	FROM (	
+	SELECT code , rownum rnum, board_no, emp_no, emp_name, write_date, deliv_prog
+	 , dep_name, dep_no, dep_no2, prod_no, orp_qty, prod_name, prod_stock
+	 , sector_no, prod_cnt, prod_stock_size,prod_sector
+	<include refid="outdocSearchFrag"/>
+    ) Z
+    ORDER BY RNUM
+</select>
+
+<resultMap type="DeliveryOrderVO" id="deliveryOrMap" autoMapping="true">
+	<id property="deliv_no" column="DELIV_NO"/>
+	<collection property="order" javaType="java.util.List" ofType="OrderVO" autoMapping="true">
+		<collection property="orderList" javaType="java.util.List" ofType="OrderListVO" autoMapping="true">
+			<collection property="prodList" javaType="java.util.List" ofType="ProdVO" autoMapping="true">
+			</collection>
+		</collection>
+	</collection>
+</resultMap>
+
+<!-- 출하지시서 상세보기 -->
+<select id="readDeliveryOrder" parameterType="int" resultMap="deliveryOrMap">
+ 	SELECT 'OR001' AS CODE, a.deliv_no as deliv_no, a.emp_no as emp_no
+            , to_char(a.deliv_date, 'YYYY-MM-DD') as write_date 
+            , to_char(a.deliv_schd, 'YYYY-MM-DD') as out_date 
+            , b.emp_name as emp_name 
+            , c.dep_name as dep_name, c.dep_no as dep_no, c.dep_no2 as dep_no2
+            , d.or_no as or_no
+            , e.prod_no as prod_no, e.orp_qty as orp_qty
+            , f.prod_name as prod_name , f.prod_stock as prod_stock
+            , f.prod_stock_size as prod_stock_size
+            , g.sector_no as sector_no , g.prod_cnt as prod_cnt, g.prod_sector as prod_sector
+            , i.store_no as store_no, i.store_name as store_name
+   FROM or_delivery a left outer join orderp d on(a.or_no = d.or_no)
+             left outer join or_plist e on (d.or_no = e.or_no)
+             left outer join prod f on (e.prod_no = f.prod_no)
+             left outer join prod_sector g on (f.prod_no = g.prod_no)
+             left outer join sector h on (g.sector_no = h.sector_no)
+             left outer join store i on (h.store_no = i.store_no)
+             left outer join employee b on(a.emp_no = b.emp_no)
+	         left outer join department c on(b.dep_no = c.dep_no)
+    WHERE G.SECTOR_NO IS NOT NULL AND G.PROD_CNT IS NOT NULL AND A.DELIV_NO = #{board_no}
+</select>
+
+<!-- or_delivery 수정 -->
+<update id="updateOrDelivery" parameterType="DeliveryOrderVO">
+		UPDATE or_delivery
+		SET deliv_prog = 'OR02'
+		WHERE deliv_no = #{deliv_no}
+</update>
+
+<!-- prod-out pk 생성  -->
+<select id="prodOutPK" resultType="int">
+		SELECT NVL(MAX(prod_out_no),0)+1 FROM prod_out
+</select>
+
+<!-- 상품 출고 테이블 insert -->
+<insert id="insertProdOut" parameterType="DeliveryOrderVO">
+	INSERT ALL 
+	<foreach collection="prodList" item="prod" index="idx">
+		INTO prod_out (prod_out_no, deliv_no, prod_sector, prod_out_date, prod_out_qty, emp_no)
+		VALUES (
+			#{prod_out_no,jdbcType=NUMERIC}+#{idx}
+			,#{deliv_no,jdbcType=NUMERIC}
+			,(
+				SELECT PROD_SECTOR 
+				FROM PROD_SECTOR 
+				WHERE PROD_NO LIKE #{prod.prod_no} AND SECTOR_NO LIKE #{prod.sector_no}
+			)
+			,sysdate
+			,#{prod.prod_out_qty,jdbcType=NUMERIC}
+			,#{emp_no,jdbcType=CHAR}
+		)
+	</foreach>
+	SELECT * FROM DUAL
+</insert>
+
+</mapper>

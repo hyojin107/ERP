@@ -1,0 +1,16 @@
+eclipse.preferences.version=1
+<<<<<<< .mine
+encoding//src/main/java/ERP/controller/account/\uC6F9\uC18C\uCF13.java=UTF-8
+||||||| .r125022
+=======
+encoding//src/main/resources/kr/or/ddit/msg/message_ko.properties=UTF-8
+encoding//webapp/WEB-INF/views/emp/retirementAllList.jsp=UTF-8
+>>>>>>> .r125394
+encoding//webapp/WEB-INF/views/wh/chart/chartMP.jsp=UTF-8
+encoding//webapp/WEB-INF/views/wh/enter/enBuyListModalView.jsp=UTF-8
+encoding//webapp/WEB-INF/views/wh/enter/enMatBuyModalView.jsp=UTF-8
+encoding//webapp/WEB-INF/views/wh/enter/enMatListView.jsp=UTF-8
+encoding//webapp/WEB-INF/views/wh/enter/enProductReportModalView.jsp=UTF-8
+encoding//webapp/WEB-INF/views/wh/mat/matModalView.jsp=UTF-8
+encoding//webapp/WEB-INF/views/wh/prod/prodModalView.jsp=UTF-8
+encoding/<project>=UTF-8

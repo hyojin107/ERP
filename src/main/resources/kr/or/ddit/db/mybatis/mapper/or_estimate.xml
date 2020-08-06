@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.IEstimateDAO">
+	<sql id="searchFlag">
+		FROM OR_ESTIMATE A INNER JOIN EMPLOYEE B ON (A.EMP_NO = B.EMP_NO)
+			            INNER JOIN BUYER C ON (A.BUYER_NO = C.BUYER_NO)
+<!-- 			            INNER JOIN -->
+<!-- 						    (SELECT * -->
+<!-- 						    FROM OR_EST_P A INNER JOIN PROD B ON (A.PROD_NO = B.PROD_NO)) D -->
+<!-- 						ON (A.EST_NO = D.EST_NO) -->
+
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="'OR01'.equals(detailSearch.status) "> <!-- 견적서 진행중 -->
+					A.EST_PROG LIKE 'OR01'
+				</if>
+				<if test="'OR02'.equals(detailSearch.status) "> <!-- 완료 -->
+					A.EST_PROG LIKE 'OR02'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.est_date)">
+					AND A.EST_DATE = #{detailSearch.est_date} 
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_name)">
+					AND	B.EMP_NAME LIKE '%'||#{detailSearch.emp_name}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.buyer_no)">
+					AND	C.BUYER_NO LIKE '%'||#{detailSearch.buyer_no}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.buyer_name)">
+					AND	C.BUYER_NAME LIKE '%'||#{detailSearch.buyer_name}||'%'
+				</if>
+			</if>
+		</trim>            
+	</sql>
+
+	<insert id="insertEstimate" parameterType="vo.order.EstimateVO">
+		<selectKey resultType="int" keyProperty="est_no" order="BEFORE">
+			SELECT NVL(MAX(EST_NO), 0)+1 FROM OR_ESTIMATE
+		</selectKey>
+
+		INSERT ALL
+			INTO or_estimate (
+			    EST_NO, EMP_NO, EST_DATE, EST_PRICE, EST_PROG, BUYER_NO, EST_PROG
+			) VALUES (
+			    #{est_no,jdbcType=NUMERIC}, #{emp_no,jdbcType=CHAR}, NVL(DECODE(#{est_date},'',SYSDATE, #{est_date}), SYSDATE), 
+			    #{est_price,jdbcType=NUMERIC}, 
+			    #{est_prog,jdbcType=CHAR}, #{buyer_no,jdbcType=CHAR}, NVL(#{est_prog}, 'OR01')
+			)
+			
+			<foreach collection="estimateList" item="estp" index="idx">
+				INTO OR_EST_P(
+				    PROD_NO, EST_NO, EST_QTY
+				)VALUES(
+				    #{estp.prod_no, jdbcType=VARCHAR}, #{est_no,jdbcType=NUMERIC}, #{estp.est_qty,jdbcType=NUMERIC}
+				)
+			</foreach>
+		SELECT * FROM DUAL
+
+	</insert>
+	
+	<resultMap type="vo.order.EstimateVO" id="estMap" autoMapping="true">
+<!-- 		<id property="est_no" column="EST_NO"/> -->
+		<id property="est_no" column="EST_NO"/>
+		<collection property="estimateList" javaType="java.util.List" ofType="vo.order.EstimateListVO" autoMapping="true">
+			<collection property="prodList" javaType="java.util.List" ofType="vo.wareHouse.ProdVO" autoMapping="true" />
+		</collection>
+		
+<!-- 		<association property="estimateList" javaType="vo.order.EstimateListVO" autoMapping="true"/> -->
+
+	</resultMap>
+	
+<!-- 	<select id="selectEstimate"> -->
+	<select id="selectEstimate" parameterType="int" resultMap="estMap">
+		SELECT U.EST_NO, U.EMP_NO, U.BUYER_NO, TO_CHAR(U.EST_DATE,'YYYY-MM-DD') EST_DATE, U.EST_PRICE, U.EST_PROG,
+				V.PROD_NO, V.PROD_NAME, V.PROD_STANDARD, V.PROD_STAND_SIZE, V.PROD_OUT_PRICE, V.PROD_VALIDITY,
+				X.EMP_NAME , Y.BUYER_NAME , W.EST_QTY
+		FROM OR_EST_P W INNER JOIN PROD V ON (W.PROD_NO = V.PROD_NO) 
+						 INNER JOIN OR_ESTIMATE U ON (W.EST_NO = U.EST_NO)
+						 LEFT OUTER JOIN(
+						 	SELECT DISTINCT BUYER_NAME, EST_NO
+						 	FROM OR_ESTIMATE U INNER JOIN BUYER T ON (T.BUYER_NO = U.BUYER_NO)
+						 ) Y ON (W.EST_NO = Y.EST_NO)
+						 LEFT OUTER JOIN(
+						 	SELECT DISTINCT EMP_NAME, EST_NO
+						 	FROM OR_ESTIMATE U INNER JOIN EMPLOYEE S ON (S.EMP_NO = U.EMP_NO)
+						 ) X ON (W.EST_NO = X.EST_NO)
+		WHERE U.EST_NO = #{est_no}
+
+	</select>
+	
+	<select id="selectEstimateCount" parameterType="vo.PagingVO" resultType="int">
+		SELECT COUNT(*)
+		<include refid="searchFlag"/>
+	</select>
+	
+	<select id="selectEstimateList" parameterType="vo.PagingVO" resultMap="estMap">
+<!-- 		SELECT Z.* -->
+<!-- 		FROM ( -->
+			SELECT ROWNUM RNUM, A.EST_NO, B.EMP_NO, B.EMP_NAME,
+							 C.BUYER_NO, C.BUYER_NAME, TO_CHAR(A.EST_DATE, 'YYYY-MM-DD'), A.EST_PRICE, A.EST_PROG
+			
+			<include refid="searchFlag"/>
+			ORDER BY EST_NO DESC
+<!-- 		) Z -->
+<!-- 		WHERE RNUM BETWEEN #{startRow} AND #{endRow} -->
+	</select>
+	
+	<update id="updateEstimate" parameterType="vo.order.EstimateVO">
+	UPDATE OR_ESTIMATE
+    SET
+        EMP_NO = #{emp_no, jdbcType=CHAR},
+        BUYER_NO = #{buyer_no, jdbcType=CHAR},
+        EST_DATE = NVL(DECODE(#{est_date},'',SYSDATE, #{est_date}), SYSDATE),
+        EST_PRICE = #{est_price, jdbcType=NUMERIC},
+        EST_PROG = NVL(#{est_prog}, 'OR01')
+	WHERE
+    	EST_NO = #{est_no}
+	</update>
+	<update id="updateEstList" parameterType="vo.order.EstimateListVO">
+	MERGE INTO OR_EST_P
+	USING DUAL
+    	ON ( EST_NO = #{est_no})
+	WHEN MATCHED THEN
+    	UPDATE SET PROD_NO = #{prod_no} , EST_QTY = #{est_qty}	
+	</update>
+	
+	<update id="deleteEstimate" parameterType="int">
+	UPDATE OR_ESTIMATE
+	SET
+        EST_PROG = 'OR99'
+	WHERE
+	    EST_NO IN
+	    <foreach collection="est_noList" item="est_no" separator=",">	    
+	     	#{est_no}
+	    </foreach>
+	</update>
+
+	
+</mapper>

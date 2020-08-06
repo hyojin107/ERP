@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.account.IFixMinusDAO">
+	<resultMap type="FixAssetsVO" id="list" autoMapping="true">
+		<id property="fixassets_no" column="FIXASSETS_NO"/>
+		<collection property="fixMinusList" javaType="java.util.List" ofType="FixMinusVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectFixMinusList" parameterType="FixMinusVO" resultMap="list">
+		SELECT A.FIXASSETS_NO, ACCOUNT_NAME, ASSETS_NAME, AMOR_COST,  
+				TO_CHAR(NVL(AMOR_DATE,SYSDATE), 'YYYY년 MM월') AMOR_DATE, DECODE(B.LIFE_YEAR*12-COUNT(A.AMOR_DATE),0,'상각완료','상각진행') STATUS 
+		FROM AMOR_MEMORY A INNER JOIN FIXASSETS B ON (A.FIXASSETS_NO=B.FIXASSETS_NO)
+			INNER JOIN ACCOUNT C ON (B.ACCOUNT_NO=C.ACCOUNT_NO)
+		<trim prefix=" WHERE " prefixOverrides="AND|OR">
+		<if test="account_no != null">
+			C.ACCOUNT_NO=#{account_no}
+		</if>
+		<if test="startyear != null">
+			<![CDATA[ AND AMOR_DATE >= TO_DATE(#{startyear}||]]>
+			<choose>
+				<when test="startmonth != null">
+					#{startmonth}
+				</when>
+				<otherwise>
+					'01'
+				</otherwise>
+			</choose>
+			,'YYYYMM')
+		</if>
+		<if test="endyear != null">
+			<![CDATA[AND AMOR_DATE < LAST_DAY(TO_DATE(#{endyear}||]]>
+			<choose>
+				<when test="endmonth != null">
+					#{endmonth}
+				</when>
+				<otherwise>
+					'12'
+				</otherwise>
+			</choose>
+			,'YYYYMM'))+1
+		</if>
+		</trim>
+		GROUP BY A.FIXASSETS_NO, ACCOUNT_NAME, ASSETS_NAME, AMOR_COST, 
+				TO_CHAR(NVL(AMOR_DATE,SYSDATE), 'YYYY년 MM월') , B.LIFE_YEAR
+		ORDER BY ACCOUNT_NAME
+	</select>
+	<select id="startDate">
+		SELECT MIN(AMOR_DATE)
+		FROM AMOR_MEMORY A INNER JOIN FIXASSETS B ON (A.FIXASSETS_NO=B.FIXASSETS_NO)
+							INNER JOIN 
+	</select>
+</mapper>

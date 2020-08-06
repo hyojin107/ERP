@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.emp.IEmpListDAO">
+
+	 
+	<select id="selectPosList" resultType="hashMap">
+		select pos_no,  pos_name from  position
+	</select>
+	<select id="selectSolidList" resultType="hashMap">
+		SELECT CODE, NAME
+		  from rule
+		where CODE like 'C%'
+	</select>
+	<select id="selectFulltime" resultType="hashMap">
+		select code, name
+		 from rule
+		 WHERE CODE LIKE 'D%'
+	</select>
+	<select id="selectDepartmentList" resultType="hashMap">
+		select dep_no, dep_name
+		 from  department
+		 where dep_no2 is null
+	</select>
+	<select id="selectTeamList" parameterType="string" resultType="DepartmentVO">
+		select dep_no, dep_name
+		 from  department
+		 where dep_no2 = #{dep_no2, jdbcType=VARCHAR}
+	</select>
+	<select id="selectRetireList" parameterType="string" resultType="RetirementVO">
+		select code, name
+		from rule
+		where  code LIKE 'E0%' 
+	</select>
+	<select id="selectAnnList"  parameterType="string" resultType="AnnouncementVO">
+		select code, name
+		from rule
+		where code like 'B0%'
+	</select>
+</mapper>

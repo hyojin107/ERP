@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.wareHouse.IEnterDAO">
+<sql id="searchFrag">
+	FROM material
+	<![CDATA[
+		WHERE mat_stock < mat_safe_stock
+	]]>
+	<trim prefixOverrides="AND /OR">
+		<if test="detailSearch!=null">
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_name)">
+    			AND MAT_NAME LIKE '%' || #{detailSearch.mat_name} || '%'
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_no)">
+    			AND MAT_NO LIKE '%' || #{detailSearch.mat_no} || '%'
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.lprod_no)">
+    			AND LPROD_NO = #{detailSearch.lprod_no}
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_use)">
+    			AND MAT_USE = #{detailSearch.mat_use}
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startDay) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endDay)">
+    			<![CDATA[
+    				AND MAT_VALIDITY >= #{detailSearch.startDay} AND MAT_VALIDITY < #{detailSearch.endDay}
+    			]]>
+    		</if>
+		</if>
+	</trim> 
+</sql>
+
+<!-- 원자재 갯수  -->
+<select id="MatLackCnt" resultType="int" parameterType="PagingVO">
+	select count(*) <include refid="searchFrag"/>
+</select>
+
+<!-- 재고량이 부족한 원자재 출력하기  -->
+<select id="MatLackList" resultType="MaterialVO" parameterType="PagingVO">
+	SELECT Z.*
+	FROM (
+		SELECT rownum RNUM,
+		    mat_no, lprod_no, mat_standard,
+		    mat_stand_size, mat_stock_size,
+		    mat_name, mat_in_cost,
+		    mat_stock, mat_safe_stock,
+		    mat_validity, mat_use
+		<include refid="searchFrag"/>	
+	order by RNUM
+	) Z
+</select>
+
+
+<resultMap type="EnterStuffVO" id="stuffList" autoMapping="true">
+
+<id property="stuff_key" column="STUFF_KEY"/>
+<collection property="stufflist" javaType="java.util.List" ofType="StuffVO" autoMapping="true"/>
+
+</resultMap>
+
+<select id="readBuyDocList" parameterType="string" resultMap="stuffList">
+
+<if test="'T001'.equals(code) ">
+
+  SELECT
+  A.PUR_CODE AS STUFF_KEY ,
+  D.MAT_NO AS STUFF_NO ,
+  D.MAT_NAME AS STUFF_NAME,
+  B.ORMAT_QTY AS STUFF_CNT,  
+  E.EMP_NAME AS EMP_NAME,
+  A.PUR_DATE AS STUFF_DATE,
+  F.POS_NAME, G.NAME,
+  D.MAT_STOCK_SIZE AS STUFF_SIZE
+  FROM BUY_PURCHASE A INNER JOIN BUY_OR_MAT B ON (A.OR_CODE = B.OR_CODE)
+  LEFT OUTER JOIN MATERIAL D ON (B.MAT_NO = D.MAT_NO)
+  LEFT OUTER JOIN EMPLOYEE E ON (A.EMP_NO = E.EMP_NO)
+  LEFT OUTER JOIN POSITION F ON (E.POS_NO = F.POS_NO)
+  LEFT OUTER JOIN RULE G ON (G.CODE = E.DEP_NO)
+  ORDER BY STUFF_DATE
+
+</if>
+        
+        
+        
+<if test="'T002'.equals(code) ">
+  SELECT 'T002' AS CODE,
+  C.PORDER_NO AS STUFF_KEY ,
+  D.PROD_NO AS STUFF_NO,
+  E.PROD_NAME AS STUFF_NAME ,
+  D.PDUCT_CNT AS STUFF_CNT,
+  F.EMP_NAME,
+  C.PORDER_DATE AS DIS_DATE
+ 
+  FROM PDUCT_OR C INNER JOIN PDUCT_LIST D ON ( C.PORDER_NO = D.PORDER_NO)
+  LEFT OUTER JOIN PROD E ON ( D.PROD_NO = E.PROD_NO)
+  LEFT OUTER JOIN EMPLOYEE F ON ( C.EMP_NO = F.EMP_NO)
+  
+  ORDER BY CODE, STUFF_KEY
+</if>
+
+<if test="'T003'.equals(code) ">
+  SELECT 'T003' AS CODE,
+  A.OR_RETP_NO AS STUFF_KEY, 
+  A.PROD_NO AS STUFF_NO, 
+  D.PROD_NAME AS STUFF_NAME,
+  A.RET_LIST_QTY AS STUFF_CNT,
+  EMP_NAME,
+  B.OR_RETP_DATE AS DIS_DATE
+  FROM OR_RET_PLIST A LEFT OUTER JOIN OR_RETURN_P B ON (A.OR_RETP_NO = B.OR_RETP_NO)
+  LEFT OUTER JOIN EMPLOYEE C ON (B.EMP_NO = C.EMP_NO)
+  LEFT OUTER JOIN PROD D ON (A.PROD_NO = D.PROD_NO)
+  WHERE  RES_STATUS = 'K001'
+</if> 
+
+</select>
+
+
+</mapper>

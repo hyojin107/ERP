@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.emp.IRetirementDAO" >
+<sql id="searchFrag">
+			WHERE A.DEP_NO2 IS NOT NULL <!-- 부서가 NOT NULL이 아닐때 -->
+		<if test="detailSearch!=null">
+		  <!-- 	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.sal_date)">
+				 AND c.SAL_DATE BETWEEN  TRUNC(to_date(#{detailSearch.sal_date}),'MM') AND LAST_DAY(to_date(#{detailSearch.sal_date}))날짜를 검색했을 때
+			 </if> -->
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no2)">
+					and a.dep_no2 = #{detailSearch.dep_no2}
+			 </if>		 
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no)">
+					and a.dep_no = #{detailSearch.dep_no}
+			 </if>
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.retire_reason)">
+					and <if test="detailSearch.retire_reason.equals('E001')"> c.retire_reason is null</if> 
+						<if test="detailSearch.retire_reason.equals('E002')"> c.retire_reason is Not null</if>
+					
+			 </if>		 
+		 </if>
+</sql>
+
+
+	<!-- 리스트 -->
+	<select id="selectRetirementList" resultType="EmployeeVO" parameterType="PagingVO">
+			select z.*
+				 from (
+				SELECT ROWNUM RNUM, a.dep_name dep_no, b.emp_no, c.payment_day ,d.POS_NAME pos_no,b.emp_name, b.emp_gen, b.emp_phone, b.emp_email, b.emp_addr,b.emp_addr2
+										, decode(c.RETIRE_REASON, null,'중간정산','퇴직정산')  retire_reason, c.RETIRE_DATE
+					  FROM DEPARTMENT a left outer join employee b on(a.dep_no = b.dep_no)
+										inner join retirement c on(b.emp_no = c.emp_no)
+										left outer join position d on(b.pos_no = d.pos_no)
+										<include refid="searchFrag"/>
+					START WITH a.DEP_NO = b.dep_no
+					CONNECT BY a.DEP_NO = PRIOR a.DEP_NO2
+					) z
+				where rnum between #{startRow} and #{endRow}
+				
+	</select>
+	
+	<select id="selectEmpCount"   parameterType="PagingVO" resultType="int">
+			select count(*)
+		FROM DEPARTMENT a left outer join employee b on(a.dep_no=b.dep_no)
+							inner  join retirement c on(b.emp_no = c.emp_no)
+							left outer join position d on(b.pos_no = d.pos_no)
+		<include refid="searchFrag"/>
+	</select>
+	
+	<!-- 퇴직금 영수증 모달창으로 나오는거  -->
+	<select id="selectRetirement" resultType="EmployeeVO" parameterType="string">
+		select a.emp_no, a.emp_gen, a.emp_phone, a.emp_name, a.emp_addr, a.bank, a.emp_email, a.emp_bankno, to_char(a.hire_date, 'YYYY-MM-DD') hire_date , c.dep_name dep_no,
+		        d.pos_name  pos_no, to_char(b.payment_day, 'YYYY-MM-DD') payment_day, to_char(b.retire_date,'YYYY-MM-DD') retire_date,
+		        b.RETIRE_SALARY, b.DEDUCTION, e.MY_BASICSALARY, b.RETIRE_REASON , f.name
+		from employee a inner join retirement b on(a.emp_no = b.emp_no)
+	                inner join department c on(a.dep_no = c.dep_no)
+	                inner join position d on(a.pos_no = d.pos_no)
+	                inner join  SALARY_TRANS e on(a.emp_no = e.emp_no)
+	                inner  join rule f on(a.fulltime = f.code) 
+		where a.emp_no = #{emp_no}
+	</select> 
+	
+	<insert id="insertRetirement" parameterType="EmployeeVO">
+	
+	
+	</insert>
+	
+</mapper>

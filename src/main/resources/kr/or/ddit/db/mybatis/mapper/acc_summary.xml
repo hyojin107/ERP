@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.account.ISummaryDAO">
+	<insert id="insertSummary" parameterType="SummaryVO">
+		<selectKey order="BEFORE" resultType="int" keyProperty="summary_no">
+			SELECT NVL(MAX(SUMMARY_NO), 0) + 1 FROM SUMMARY
+		</selectKey>
+		INSERT INTO SUMMARY (
+			SUMMARY_NO, SUMMARY
+		) VALUES (
+			#{summary_no,jdbcType=NUMERIC}, #{summary,jdbcType=VARCHAR}
+		)
+	</insert>
+	<update id="deleteSummary" parameterType="int">
+		UPDATE SUMMARY
+    	SET USE = 'D'
+		WHERE SUMMARY_NO = #{summary_no,jdbcType=NUMERIC}
+	</update>
+	<select id="selectSummaryList" resultType="SummaryVO">
+		SELECT * FROM SUMMARY
+		WHERE USE = 'Y'
+		<include refid="search"/>
+		ORDER BY SUMMARY_NO
+	</select>
+	<select id="selectSummary" parameterType="int">
+		SELECT * FROM SUMMARY 
+		WHERE SUMMARY_NO = #{summary_no,jdbcType=NUMERIC}
+	</select>
+	<sql id="search">
+		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(summary)">
+			AND SUMMARY LIKE #{summary,jdbcType=VARCHAR}
+		</if>
+	</sql>
+</mapper>

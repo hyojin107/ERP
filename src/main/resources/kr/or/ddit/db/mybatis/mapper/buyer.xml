@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  [[개정이력(Modification Information)]]       -->
+<!--  	수정일      		수정자  		 수정내용               	-->
+<!--  ==========   ======    ==============     -->
+<!--  2020. 7. 2        송효진    		 최초작성              	-->
+<!--  Copyright (c) 2020 by DDIT All right reserved -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.IBuyerDAO">
+
+	<sql id="searchFrag">
+		FROM BUYER
+		<where>
+			<if test="searchVO!=null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="'name'.equals(searchVO.searchType)">
+						INSTR(BUYER_NAME, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="'rep'.equals(searchVO.searchType)">
+						INSTR(BUYER_REP, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						INSTR(BUYER_NAME, #{searchVO.searchWord}) > 0
+						OR INSTR(BUYER_REP, #{searchVO.searchWord}) > 0
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	
+	<select id="selectBuyerCount" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+	    <include refid="searchFrag"/>
+	</select>
+	<select id="selectBuyerList" parameterType="PagingVO" resultType="BuyerVO">
+		SELECT A.*
+		FROM (
+			SELECT ROWNUM RNUM, BUYER_NO, BUYER_NAME, BUYER_REP
+				   , BUYER_TEL, BUYER_ZIP, BUYER_ADDR
+				   , BUYER_ADDR2, CHARGER_EMAIL, CHARGER_NAME
+				   , CHARGER_PHONE, BUYER_SECTOR, BUYER_BANK
+				   , BUYER_BANKNAME, BUYER_BANKNO, USE_STATUS
+				   , ETC
+			<include refid="searchFrag" />
+			ORDER BY BUYER_NO DESC
+		) A 
+		WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	<select id="selectBuyer" parameterType="String" resultType="BuyerVO">
+		SELECT BUYER_NO, BUYER_NAME, BUYER_REP
+			   , BUYER_TEL, BUYER_ZIP, BUYER_ADDR
+			   , BUYER_ADDR2, CHARGER_EMAIL, CHARGER_NAME
+			   , CHARGER_PHONE, BUYER_SECTOR, BUYER_BANK
+			   , BUYER_BANKNAME, BUYER_BANKNO, USE_STATUS
+			   , ETC
+		FROM BUYER
+		WHERE BUYER_NO = #{buyer_no}
+	</select>
+	
+	<!-- 거래상태 들고오기 -->
+	<select id="selectRuleList" resultType="RuleVO">
+		SELECT CODE, NAME FROM RULE WHERE CODE LIKE 'H%'
+	</select>
+	
+	
+	<!-- 거래처 등록 -->
+	<sql id="insertBuyer">
+		INSERT INTO BUYER (
+			BUYER_NO, BUYER_NAME, BUYER_REP
+			, BUYER_TEL, BUYER_ZIP, BUYER_ADDR
+			, BUYER_ADDR2, CHARGER_EMAIL, CHARGER_NAME
+			, CHARGER_PHONE, BUYER_SECTOR, BUYER_BANK
+			, BUYER_BANKNAME, BUYER_BANKNO, USE_STATUS
+			, ETC
+		) VALUES(
+			#{buyer_no}, #{buyer_name,jdbcType=VARCHAR}, #{buyer_rep,jdbcType=VARCHAR}
+			, #{buyer_tel,jdbcType=VARCHAR}, #{buyer_zip,jdbcType=VARCHAR}, #{buyer_addr,jdbcType=VARCHAR}
+			, #{buyer_addr2,jdbcType=VARCHAR}, #{charger_email,jdbcType=VARCHAR}, #{charger_name,jdbcType=VARCHAR}
+			, #{charger_phone,jdbcType=VARCHAR}, #{buyer_sector,jdbcType=VARCHAR}, #{buyer_bank,jdbcType=VARCHAR}
+			, #{buyer_bankname,jdbcType=VARCHAR}, #{buyer_bankno,jdbcType=VARCHAR}, #{use_status,jdbcType=VARCHAR}
+			, #{etc,jdbcType=VARCHAR}
+		)
+	</sql>
+	<insert id="insertBuyBuyer" parameterType="BuyerVO">
+		<selectKey resultType="String" keyProperty="buyer_no" order="BEFORE">
+			SELECT 'M' || LPAD(SUBSTR(NVL(MAX(BUYER_NO), '00'),2)+1,4,'0') FROM BUYER WHERE BUYER_NO LIKE 'M%'
+		</selectKey>
+		<include refid="insertBuyer" />
+	</insert>
+	<insert id="insertProdBuyer" parameterType="BuyerVO">
+		<selectKey resultType="String" keyProperty="buyer_no" order="BEFORE">
+			SELECT 'P' || LPAD(SUBSTR(NVL(MAX(BUYER_NO), '00'),2)+1,4,'0') FROM BUYER WHERE BUYER_NO LIKE 'P%'
+		</selectKey>
+		<include refid="insertBuyer" />
+	</insert>
+	<insert id="insertAccountBuyer" parameterType="BuyerVO">
+		<selectKey resultType="String" keyProperty="buyer_no" order="BEFORE">
+			SELECT 'A' || LPAD(SUBSTR(NVL(MAX(BUYER_NO), '00'),2)+1,4,'0') FROM BUYER WHERE BUYER_NO LIKE 'A%'
+		</selectKey>
+		<include refid="insertBuyer"/>
+	</insert>
+	
+	<!-- 거래처 수정 -->
+	<update id="updateBuyer" parameterType="BuyerVO">
+		UPDATE BUYER SET
+			BUYER_NAME = #{buyer_name,jdbcType=VARCHAR} 
+			, BUYER_REP = #{buyer_rep,jdbcType=VARCHAR} 
+			, BUYER_TEL = #{buyer_tel,jdbcType=VARCHAR} 
+			, BUYER_ADDR = #{buyer_addr,jdbcType=VARCHAR} 
+			, CHARGER_EMAIL = #{charger_email,jdbcType=VARCHAR} 
+			, CHARGER_NAME = #{charger_name,jdbcType=VARCHAR} 
+			, CHARGER_PHONE = #{charger_phone,jdbcType=VARCHAR} 
+			, BUYER_SECTOR = #{buyer_sector,jdbcType=VARCHAR} 
+			, BUYER_BANK = #{buyer_bank,jdbcType=VARCHAR} 
+			, BUYER_BANKNAME = #{buyer_bankname,jdbcType=VARCHAR} 
+			, BUYER_BANKNO = #{buyer_bankno,jdbcType=VARCHAR} 
+			, USE_STATUS = #{use_status,jdbcType=VARCHAR} 
+			, ETC = #{etc,jdbcType=VARCHAR} 
+			, BUYER_ZIP = #{buyer_zip,jdbcType=VARCHAR} 
+			, BUYER_ADDR2 = #{buyer_addr2,jdbcType=VARCHAR}
+		WHERE BUYER_NO = #{buyer_no,jdbcType=VARCHAR} 
+	</update>
+	
+	<!-- 거래 중단 -->
+	<update id="deleteBuyer" parameterType="int">
+		UPDATE BUYER SET USE_STATUS = 'H002' WHERE BUYER_NO = #{buyer_no}
+	</update>
+</mapper>

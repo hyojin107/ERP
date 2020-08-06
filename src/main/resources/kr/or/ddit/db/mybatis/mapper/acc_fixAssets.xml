@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.account.IFixAssetsDAO">
+<select id="selectFixAssetsCount" parameterType="PagingVO" resultType="int">
+	SELECT COUNT(*)
+	FROM FIXASSETS A
+	<include refid="search"/>
+</select>
+<select id="selectFixAssetsList" parameterType="PagingVO" resultType="FixAssetsVO">
+	SELECT A.FIXASSETS_NO,    B.ACCOUNT_NAME ,    A.LIFE_YEAR,
+    ASSETS_NAME,    TO_CHAR(GETDATE,'YYYY-MM-DD') GETDATE,
+        DECODE(AMOR_WAY,'ratio','정률법','정액법') AMOR_WAY,    GETCOST,    SUM(AMOR_COST) TOTAL
+    FROM FIXASSETS A INNER JOIN ACCOUNT B ON(A.ACCOUNT_NO=B.ACCOUNT_NO)
+	LEFT OUTER JOIN AMOR_MEMORY C ON(A.FIXASSETS_NO=C.FIXASSETS_NO)
+	<include refid="search"/>
+	GROUP BY A.FIXASSETS_NO,    B.ACCOUNT_NAME,    A.LIFE_YEAR,
+    ASSETS_NAME,    TO_CHAR(GETDATE,'YYYY-MM-DD'),    AMOR_WAY,    GETCOST
+    ORDER BY 1
+</select>
+<sql id="search">
+	WHERE A.USE_STATUS = 'G001'
+	<if test="detailSearch.account_no != null">
+		AND A.ACCOUNT_NO = #{detailSearch.account_no,jdbcType=NUMERIC}
+	</if>
+	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.assets_name)">
+		AND INSTR(ASSETS_NAME, #{detailSearch.assets_name,jdbcType=VARCHAR}) > 0  
+	</if>
+</sql>
+<select id="selectAccountList" resultType="AccountVO">
+	SELECT * FROM ACCOUNT WHERE STAND_NO = 2
+</select>
+<insert id="insertFixAsset" parameterType="FixAssetsVO">
+	<selectKey keyProperty="fixassets_no" order="BEFORE" resultType="int">
+		SELECT NVL(MAX(FIXASSETS_NO),0) + 1 FROM FIXASSETS
+	</selectKey>
+	INSERT INTO FIXASSETS (
+	    FIXASSETS_NO,	    ACCOUNT_NO,	    LIFE_YEAR,	    ASSETS_NAME,
+	    GETDATE,	    AMOR_WAY,	    GETCOST,	    USE_STATUS
+	) VALUES (
+  		#{fixassets_no},    	#{account_no  },    	#{life_year   },
+    	#{assets_name },    	#{getdate,jdbcType=DATE},    	#{amor_way    },
+    	#{getcost,jdbcType=NUMERIC},    	'G001')
+</insert>
+<select id="selectFixAsset" resultType="FixAssetsVO" parameterType="int">
+	SELECT D.*
+	FROM (
+	SELECT A.FIXASSETS_NO, A.ACCOUNT_NO, B.ACCOUNT_NAME, A.ASSETS_NAME, A.GETCOST, C.AMOR_DATE,
+			TO_CHAR(A.GETDATE,'YYYY-MM-DD') GETDATE, A.AMOR_WAY, A.LIFE_YEAR, C.AMOR_COST NOW,
+			SUM(C.AMOR_COST) TOTAL,	DECODE(A.LIFE_YEAR*12-COUNT(C.AMOR_DATE),0,'상각완료','상각진행') STATUS 
+	FROM FIXASSETS A INNER JOIN ACCOUNT B ON(A.ACCOUNT_NO=B.ACCOUNT_NO)
+		LEFT OUTER JOIN AMOR_MEMORY C ON(A.FIXASSETS_NO=C.FIXASSETS_NO)
+	WHERE A.FIXASSETS_NO = #{fixassets_no}
+	GROUP BY A.FIXASSETS_NO, A.ACCOUNT_NO, B.ACCOUNT_NAME, A.ASSETS_NAME, A.GETCOST, C.AMOR_DATE,
+			TO_CHAR(A.GETDATE,'YYYY-MM-DD'), A.AMOR_WAY, A.LIFE_YEAR, C.AMOR_COST
+	ORDER BY A.FIXASSETS_NO DESC
+	) D
+	WHERE ROWNUM = 1
+</select>
+<update id="updateFixAssets" parameterType="FixAssetsVO">
+	UPDATE FIXASSETS
+    SET
+    ACCOUNT_NO =  #{account_no } ,
+    LIFE_YEAR =   #{life_year  } ,
+    ASSETS_NAME = #{assets_name },
+    GETDATE =     #{getdate    } ,
+    AMOR_WAY =    #{amor_way  }  ,
+    GETCOST =     #{getcost    } ,
+    USE_STATUS =  #{use_status }
+    WHERE FIXASSETS_NO = #{fixassets_no} 
+</update>
+<select id="selectfixdate" resultType="FixMinusVO">
+	SELECT NVL(TO_CHAR(MIN(AMOR_DATE),'YYYY'),TO_CHAR(SYSDATE,'YYYY')) STARTYEAR, 
+        NVL(TO_CHAR(MIN(AMOR_DATE),'MM'),TO_CHAR(SYSDATE,'MM')) STARTMONTH,
+        TO_CHAR(SYSDATE,'YYYY') ENDYEAR, TO_CHAR(SYSDATE,'MM') ENDMONTH
+	FROM AMOR_MEMORY
+</select>
+</mapper>

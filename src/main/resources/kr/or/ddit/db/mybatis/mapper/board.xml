@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="board.dao.IBoardDAO">
+	<sql id="searchFrag">
+		FROM BOARD
+		<where>
+			<if test="searchVO!=null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="'title'.equals(searchVO.searchType)">
+						INSTR(BO_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="'writer'.equals(searchVO.searchType)">
+						INSTR(BO_TITLE, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="'content'.equals(searchVO.searchType)">
+						INSTR(BO_CONTENT, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						INSTR(BO_TITLE, #{searchVO.searchWord}) > 0
+						OR INSTR(BO_WRITER, #{searchVO.searchWord}) > 0
+						OR INSTR(BO_CONTENT, #{searchVO.searchWord}) > 0
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+	</sql>
+	<select id="selectBoardCount" resultType="int" parameterType="PagingVO">
+		SELECT COUNT(BO_NO)
+		<include refid="searchFrag" />
+	</select>
+	
+	<select id="selectBoardList" resultType="BoardVO" parameterType="PagingVO">
+		SELECT A.*
+		FROM(
+			SELECT  ROWNUM RNUM, BO_NO,        BO_WRITER,
+			        BO_DATE,    BO_CONTENT,    BO_PASS,
+			        BO_IP,    BO_HIT,    BO_PARENT,
+		<![CDATA[
+			        DECODE(LEVEL, 1, BO_TITLE, LPAD('Re:', (LEVEL-1)*12 + 3 , '&nbsp;')||BO_TITLE) BO_TITLE
+ 		]]>
+			<include refid="searchFrag" />
+			START WITH BO_PARENT IS NULL
+			CONNECT BY PRIOR BO_NO = BO_PARENT
+			ORDER SIBLINGS BY BO_NO DESC
+		) A
+		WHERE RNUM BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	<resultMap type="BoardVO" id="boardMap" autoMapping="true">
+		<id property="bo_no" column="BONO"/>
+		<collection property="attatchList" javaType="java.util.List" ofType="AttatchVO" autoMapping="true" />
+	</resultMap>
+	
+	<select id="selectBoard" parameterType="int" resultMap="boardMap">
+		SELECT  A.BO_NO BONO,     BO_WRITER, 	BO_TITLE,
+			    BO_DATE,    BO_CONTENT,    BO_PASS,
+			    BO_IP,    BO_HIT,    BO_PARENT
+			    , ATT_NO, ATT_FILENAME, ATT_DOWNCOUNT, ATT_MIME, ATT_SAVENAME
+		FROM BOARD A LEFT OUTER JOIN ATTATCH B ON (A.BO_NO = B.BO_NO)
+		WHERE A.BO_NO = #{bo_no}	    
+	</select>
+	<update id="incrementHit" parameterType="int">
+		UPDATE BOARD
+		SET BO_HIT = BO_HIT+1
+		WHERE BO_NO = #{bo_no}
+	</update>
+	
+	<insert id="insertBoard" parameterType="BoardVO">
+		<selectKey resultType="int" keyProperty="bo_no" order="BEFORE">
+			SELECT NVL(MAX(BO_NO), 0)+1 FROM BOARD
+		</selectKey>
+		INSERT INTO BOARD (
+		    BO_NO,    BO_TITLE,    BO_WRITER,
+		    BO_DATE,    BO_CONTENT,    BO_PASS,
+		    BO_IP,    BO_HIT
+		    <if test="bo_parent!=null and bo_parent gt 0">
+		    	, BO_PARENT
+		    </if>
+		) VALUES (
+		    #{bo_no},    #{bo_title,jdbcType=VARCHAR},    #{bo_writer,jdbcType=VARCHAR},
+		    SYSDATE,    #{bo_content,jdbcType=CLOB},    #{bo_pass,jdbcType=VARCHAR},
+		    #{bo_ip,jdbcType=VARCHAR},    0
+		    <if test="bo_parent!=null and bo_parent gt 0">
+		    	, #{bo_parent}
+		    </if>
+		)
+	</insert>
+	
+	<update id="updateBoard" parameterType="BoardVO">
+		UPDATE BOARD
+		    SET
+		    BO_TITLE = #{bo_title,jdbcType=VARCHAR},
+		    BO_WRITER =#{bo_writer,jdbcType=VARCHAR},
+		    BO_CONTENT =#{bo_content,jdbcType=CLOB}
+		WHERE
+		    BO_NO = #{bo_no,jdbcType=NUMERIC}
+	</update>
+	
+	<delete id="deleteBoard" parameterType="BoardVO">
+		DELETE FROM BOARD
+		WHERE BO_NO IN (
+		    SELECT BO_NO
+		    FROM BOARD
+		    START WITH BO_NO = #{bo_no}
+		    CONNECT BY PRIOR BO_NO = BO_PARENT
+		)
+	</delete>
+</mapper>
+
+
+
+
+
+
+
+
+
+
+
+
+

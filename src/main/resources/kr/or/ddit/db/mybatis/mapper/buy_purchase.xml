@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.buy.IBuy_PurchaseDAO">
+	
+	<!-- 매입서 등록 -->
+	<insert id="insertPurchase" parameterType="Buy_PurchaseVO">
+		INSERT ALL
+			<foreach collection="orderList" item="or" index="idx">
+				INTO BUY_PURCHASE (PUR_CODE, OR_CODE, EMP_NO, PUR_DATE, STATUS)
+					VALUES (#{or.or_code,jdbcType=NUMERIC}, #{or.or_code,jdbcType=NUMERIC}, #{emp_no,jdbcType=VARCHAR}, sysdate, 'Q001')
+			</foreach>
+		SELECT * FROM DUAL 
+	</insert>
+	
+	
+	<!-- 검색 -->
+	<sql id="searchFrag">
+		FROM (
+		    SELECT O.ORMAT_CODE, O.BUY_NO, O.OR_CODE, O.ORMAT_QTY QTY, COST, M.MAT_NAME NAME, LP.LPROD_NAME LPROD, M.MAT_STAND_SIZE STAND, M.MAT_NO NO
+		    FROM BUY_OR_MAT O LEFT OUTER JOIN MATERIAL M ON(M.MAT_NO = O.MAT_NO)
+		                      LEFT OUTER JOIN LPROD LP ON (LP.LPROD_NO = M.LPROD_NO)
+		        UNION
+		    SELECT NULL, NULL, OR_CODE, ITEM_QTY QTY, ITEM_COST COST, ITEM_NAME NAME, ITEM_LPROD LPROD, ITEM_STAND_SIZE STAND, ITEM_NO NO
+		    FROM BUY_ITEM
+		) MI LEFT OUTER JOIN BUY_ORDER O ON(MI.OR_CODE=O.OR_CODE)
+		     LEFT OUTER JOIN BUY_PURCHASE P ON(O.OR_CODE=P.OR_CODE)
+		     LEFT OUTER JOIN EMPLOYEE E ON(P.EMP_NO=E.EMP_NO)
+		     LEFT OUTER JOIN DEPARTMENT D ON(E.DEP_NO=D.DEP_NO)
+		     LEFT OUTER JOIN BUYER B ON(O.BUYER_NO=B.BUYER_NO)
+		     LEFT OUTER JOIN MATERIAL_IN MIN ON (MIN.PUR_CODE=P.PUR_CODE)
+		     LEFT OUTER JOIN BUY_RETURN RET ON (RET.PUR_CODE=P.PUR_CODE)
+		WHERE P.PUR_CODE IS NOT NULL
+		<if test="detailSearch!=null">
+			<if test="'Q001'.equals(detailSearch.status)">	<!-- 매입 진행중 -->
+				AND MIN.PUR_CODE IS NULL
+				AND RET.PUR_CODE IS NULL
+				AND P.STATUS LIKE 'Q001'
+			</if>
+			<if test="'Q002'.equals(detailSearch.status)">	<!-- 입고 완료 -->
+				AND MIN.PUR_CODE IS NOT NULL
+				AND P.STATUS NOT LIKE 'Q001'
+<!-- 				AND P.STATUS LIKE 'Q002' -->
+			</if>
+			<if test="'Q005'.equals(detailSearch.status)">	<!-- 매입 취소 -->
+				AND MIN.PUR_CODE IS NULL
+				AND P.STATUS LIKE 'Q005'
+			</if>
+			<if test="'Q007'.equals(detailSearch.status)">	<!-- 반품처리 -->
+				AND RET.PUR_CODE IS NOT NULL
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.pur_date)">
+				AND P.PUR_DATE >= TO_DATE(#{detailSearch.pur_date}) 
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.pur_dateEnd)">
+				<![CDATA[
+				AND	P.PUR_DATE < TO_DATE(#{detailSearch.pur_dateEnd})+1
+				]]>
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+				AND E.EMP_NO = #{detailSearch.emp_no}
+			</if>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.buyer_no)">
+				AND B.BUYER_NO = #{detailSearch.buyer_no}
+			</if>
+		</if>
+	</sql>
+	<select id="selectPurchaseCount" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+	    <include refid="searchFrag"/>
+	</select>
+	<!-- 매입서 조회 -->
+	<resultMap type="Buy_PurchaseVO" id="purMap" autoMapping="true">
+		<id property="pur_code" column="PUR_CODE"/>
+		<association property="buyerVO" javaType="BuyerVO" autoMapping="true"/>
+		<collection property="unionList" javaType="java.util.List" ofType="Buy_Order_UnionVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectPurchaseList" parameterType="PagingVO" resultMap="purMap">
+		SELECT P.PUR_CODE, TO_CHAR(P.PUR_DATE,'YYYY-MM-DD') PUR_DATE, O.OR_CODE,
+		       MI.ORMAT_CODE, MI.BUY_NO, MI.QTY , COST, MI.NAME MAT_NAME, MI.LPROD, MI.STAND STAND_SIZE, MI.NO MAT_NO,
+		       P.EMP_NO, O.BUYER_NO, TO_CHAR(O.OR_DATE,'YYYY-MM-DD') OR_DATE, TO_CHAR(O.REQ_DATE,'YYYY-MM-DD'),
+		       E.EMP_NAME, D.DEP_NAME, B.BUYER_NAME
+		<include refid="searchFrag" />
+		ORDER BY P.PUR_DATE DESC
+	</select>
+	
+	<!-- 매입서 취소 -->
+	<delete id="deletePurchase" parameterType="Buy_PurchaseVO">
+		UPDATE BUY_PURCHASE SET STATUS = 'Q005'
+		WHERE PUR_CODE IN (
+			<foreach collection="pur_codeList" item="purCode" separator=",">
+				#{purCode}
+			</foreach>
+		)
+	</delete>
+	
+</mapper>
+

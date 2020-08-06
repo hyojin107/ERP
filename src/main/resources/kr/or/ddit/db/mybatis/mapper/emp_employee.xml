@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.emp.IEmployeeDAO">
+<sql id="searchFrag">
+			WHERE A.DEP_NO2 IS NOT NULL <!-- 부서가 NOT NULL이 아닐때 -->
+		<if test="detailSearch!=null">
+		  <!-- 	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.sal_date)">
+				 AND c.SAL_DATE BETWEEN  TRUNC(to_date(#{detailSearch.sal_date}),'MM') AND LAST_DAY(to_date(#{detailSearch.sal_date}))날짜를 검색했을 때
+			 </if> -->
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no2)">
+					and a.dep_no2 = #{detailSearch.dep_no2}
+			 </if>		 
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no)">
+					and a.dep_no = #{detailSearch.dep_no}
+			 </if>		 
+		 </if>
+</sql>
+
+	<!--  사원정보 리스트로 나오는거  -->
+	<select id="selectEmployeeList"  resultType="EmployeeVO" parameterType="PagingVO">
+		select z.*
+		 from (
+  			SELECT ROWNUM RNUM, a.dep_name dep_no, b.emp_no, e.name , c.SAL_DATE , d.POS_NAME pos_no, b.emp_name
+			  FROM DEPARTMENT a left outer join employee b on(a.dep_no=b.dep_no)
+								left outer join salary_trans c on(b.emp_no = c.emp_no)
+								left outer join position d on(b.pos_no = d.pos_no)
+                                inner  join rule e on(b.fulltime = e.code)
+								<include refid="searchFrag"/>
+			START WITH a.DEP_NO = b.dep_no
+			CONNECT BY a.DEP_NO = PRIOR a.DEP_NO2
+			order by emp_no	desc
+			)  z 
+		where rnum between #{startRow} and #{endRow}
+		order by emp_no	desc
+	
+	</select>
+	
+	<resultMap type="EmployeeVO" id="empMap" autoMapping="true" >
+		<id property="emp_no" column="EMP_NO" />
+		<collection property="empCertVOList" javaType="java.util.List" ofType="vo.emp.EMP_CertVO" autoMapping="true"/>	
+		<collection property="careerVOList" javaType="java.util.List" ofType="vo.emp.Emp_CareerVO" autoMapping="true"/>
+		<collection property="eduVOList" javaType="java.util.List" ofType="EducationVO" autoMapping="true"/>
+		<collection property="depVO" autoMapping="true"  javaType="DepartmentVO" />
+		<collection property="posVO" autoMapping="true" javaType="PositionVO"/>
+	</resultMap>
+	
+	
+	<!-- 사원정보 불러오는거 -->
+	<select id="selectEmployee" resultMap="empMap" parameterType="string">
+		SELECT DISTINCT
+			a.EMP_NO     , a.EMP_NAME   , 	a.EMP_EN_NAME, 	a.EMP_REGNO  , 	a.EMP_PHONE  , 	a.EMP_EMAIL  ,
+			a.EMP_ADDR   , 	to_char(a.HIRE_DATE, 'YYYY-MM-DD') HIRE_DATE , 	a.EMP_GEN    , 	a.COUNTRY    , 	a.BANK       , 	a.EMP_BANKNO ,
+			a.SOLDIER    , 	a.FULLTIME   , 	a.EMP_PASS   , 	a.EMP_ZIP    , 	a.EMP_ADDR2  , 	a.EMP_IMG    , to_char(a.EMP_BIRTHDAY,'YYYY-MM-DD') EMP_BIRTHDAY,
+			a.BANK_IMG   , 	 b.DEP_NAME , b.dep_no , j.dep_name dep_no2 , c.pos_name pos_no, 	d.edu_name, d.major, d.graduate,
+			 f.CERT_NO, to_char(f.CERT_DATE, 'YYYY-MM-DD') CERT_DATE , f.CERT_TEXT, 	f.CERT_SECTOR, f.ISSUE_AGENCY, g.name,
+			e.COMPANY, e.CAREER_TASK, e.WORK_YEAR, e.FINAL_POSITION
+		FROM EMPLOYEE a
+			inner join department b on(a.dep_no = b.dep_no)
+			inner join position c on(a.pos_no = c.pos_no)
+			inner join rule g on (a.fulltime = g.code)
+			left outer join education d on(a.emp_no = d.emp_no)
+			left outer join emp_career e on(a.emp_no = e.emp_no)
+			left outer join emp_cert f on(a.emp_no = f.emp_no)
+		
+			left outer join department j on (b.dep_no2=j.dep_no)<!-- 인사부서를 가져오기 위해서 쓴거 -->
+			
+		WHERE a.emp_no=#{emp_no}
+	</select>
+	
+	<!--  modal 에서 부서이름 가지고 오려고 할때  -->
+	<select id="departName" parameterType="EmployeeVO"  resultType="string">
+			select dep_name
+			 from department
+			 where dep_no =#{dep_no}
+	</select>
+	
+	<select id="deparNo" parameterType="EmployeeVO" resultType="string">
+			SELECT A.DEP_NAME
+			FROM  (SELECT ROWNUM RNUM, DEP_NAME
+					 FROM DEPARTMENT
+							START WITH DEP_NO = #{dep_no}
+							CONNECT BY DEP_NO = PRIOR DEP_NO2) A
+			WHERE A.RNUM = 2
+	</select>
+	
+	<!-- 새로운 사원등록  -->
+	<insert id="insertEmployee" parameterType="EmployeeVO" >
+	   <selectKey keyProperty="emp_no" resultType="string" order="BEFORE">
+			SELECT TO_CHAR(SYSDATE,'YYYYMMDD')||LPAD(SUBSTR(NVL(MAX(EMP_NO),'0000000000'),9)+1,2,'0') FROM EMPLOYEE WHERE EMP_NO LIKE  TO_CHAR(SYSDATE,'YYYYMMDD')||'%'
+		</selectKey>
+		
+			INSERT ALL
+			INTO EMPLOYEE(
+						   EMP_NO,    DEP_NO, 	 POS_NO, 		EMP_NAME, 	EMP_EN_NAME, EMP_REGNO,
+						   EMP_PHONE, EMP_EMAIL,   EMP_ADDR, 	 HIRE_DATE,
+						   EMP_GEN,   COUNTRY,   BANK, 			EMP_BANKNO,  SOLDIER, 	 FULLTIME, 
+						   EMP_PASS,  EMP_ZIP,   EMP_ADDR2 , EMP_BIRTHDAY
+		
+			) VALUES(
+						  #{emp_no,jdbcType=CHAR},    #{dep_no,jdbcType=CHAR}, 	  #{pos_no,jdbcType=CHAR},	 #{emp_name,jdbcType=CHAR}, #{emp_en_name,jdbcType=CHAR}, #{emp_regno,jdbcType=CHAR},
+						  #{emp_phone,jdbcType=CHAR}, #{emp_email,jdbcType=CHAR}, 	#{emp_addr,jdbcType=CHAR}, TO_DATE(#{hire_date},'YYYY-MM-DD'),
+						  #{emp_gen,jdbcType=CHAR}, 	#{country,jdbcType=CHAR},   #{bank,jdbcType=CHAR}, 		#{emp_bankno,jdbcType=CHAR}, #{soldier,jdbcType=CHAR}, 	#{fulltime,jdbcType=CHAR},
+						  #{emp_pass,jdbcType=CHAR},  #{emp_zip,jdbcType=CHAR},   #{emp_addr2,jdbcType=CHAR}, TO_DATE(#{emp_birthday}, 'YYYY-MM-DD')
+			)
+			<if test="empCertVOList != null">
+				<foreach collection="empCertVOList" item="licodes" index="idx" >
+				INTO EMP_CERT( 
+						CERT_NO, 	EMP_NO, 		CERT_DATE, 
+						CERT_TEXT,  CERT_SECTOR, 	ISSUE_AGENCY
+					)VALUES(
+						#{licodes.cert_no,jdbcType=CHAR}, #{emp_no,jdbcType=CHAR}, TO_DATE(#{licodes.cert_date}),
+						#{licodes.cert_text,jdbcType=CHAR}, 	#{licodes.cert_sector,jdbcType=CHAR}, #{licodes.issue_agency,jdbcType=CHAR}
+				)
+				</foreach>
+			</if>
+			<if test="eduVOList != null">
+					<foreach collection="eduVOList" item="sccodes">
+						INTO  EDUCATION(
+								EMP_NO, 	EDU_NAME, 		MAJOR,	 	GRADUATE
+						)VALUES(
+								#{emp_no,jdbcType=CHAR}, 	#{sccodes.edu_name,jdbcType=CHAR}, 	#{sccodes.major,jdbcType=CHAR},	 #{sccodes.graduate,jdbcType=CHAR}
+						)
+					</foreach>
+			</if>
+			
+			<if test="careerVOList != null">
+					<foreach collection="careerVOList" item="cacodes">
+						INTO EMP_CAREER(
+							EMP_NO, 	COMPANY, 		CAREER_TASK, 
+							WORK_YEAR, 	FINAL_POSITION
+						)VALUES(
+							#{emp_no,jdbcType=CHAR}, #{cacodes.company,jdbcType=CHAR}, 	#{cacodes.career_task,jdbcType=CHAR}, 
+							#{cacodes.work_year,jdbcType=CHAR}, 	#{cacodes.final_position,jdbcType=CHAR}
+						)
+					</foreach>
+			</if>
+	
+		SELECT * FROM DUAL
+	   
+	</insert>
+	
+	<!-- 자격증 -->
+	<select id="selectCerNO" resultType="int">
+		SELECT NVL(MAX(CERT_NO), 0)+1 FROM EMP_CERT
+	</select>
+	
+	<!-- 사원 모달창 수정 페이지 ** 여기 다시보기-->
+ 	<update id="updateEmployee"  parameterType="EmployeeVO">
+		update EMPLOYEE
+		set 
+			EMP_NAME =  #{emp_name},
+		  	EMP_EN_NAME = #{emp_en_name},
+		  	EMP_PHONE = #{emp_phone},
+		  	EMP_EMAIL =   #{emp_email},  
+		  	EMP_ADDR = 	 #{emp_addr},
+		  	HIRE_DATE =  TO_DATE(#{hire_date},'YYYY-MM-DD'),
+			EMP_GEN =  #{emp_gen},
+			COUNTRY =   #{country}, 
+			BANK = 			#{bank},
+			SOLDIER = 	#{soldier},
+			FULLTIME = 	#{fulltime},
+		    EMP_ZIP =    #{emp_zip},   
+		    EMP_ADDR2 = #{emp_addr2},
+		    EMP_BIRTHDAY = TO_DATE(#{emp_birthday}, 'YYYY-MM-DD')
+		WHERE EMP_NO =#{emp_no}
+	</update>
+	
+	
+	
+	
+	
+	<!-- 모달창에서 수정할때 자격증  셀렉트박스 수정시  -->
+	<insert id="insertCer" parameterType="EmployeeVO">
+	 	INSERT ALL
+			<if test="empCertVOList != null">
+				<foreach collection="empCertVOList" item="licodes" index="idx" >
+				<if test="licodes.cert_no != null" >
+				INTO EMP_CERT( 
+						CERT_NO, 	EMP_NO, 		CERT_DATE, 
+						CERT_TEXT,  CERT_SECTOR, 	ISSUE_AGENCY
+					)VALUES(
+						#{licodes.cert_no,jdbcType=NUMERIC}, 	#{emp_no}, 				TO_DATE(#{licodes.cert_date},'YYYY-MM-DD'),
+						#{licodes.cert_text}, 	#{licodes.cert_sector}, #{licodes.issue_agency}
+				)
+				</if>
+				</foreach>
+			</if>
+			<if test="eduVOList != null">
+					<foreach collection="eduVOList" item="sccodes">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(sccodes.edu_name)" >
+						INTO  EDUCATION(
+								EMP_NO, 	EDU_NAME, 		MAJOR,	 	GRADUATE
+						)VALUES(
+								#{emp_no,jdbcType=VARCHAR}, 	#{sccodes.edu_name,jdbcType=VARCHAR}, 	#{sccodes.major,jdbcType=VARCHAR},	 #{sccodes.graduate}
+						)
+						</if>
+					</foreach>
+			</if>
+			
+			<if test="careerVOList != null">
+					<foreach collection="careerVOList" item="cacodes">
+						<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(cacodes.company)" >
+						INTO EMP_CAREER(
+							EMP_NO, 	COMPANY, 		CAREER_TASK, 
+							WORK_YEAR, 	FINAL_POSITION
+						)VALUES(
+							#{emp_no,jdbcType=VARCHAR}, #{cacodes.company,jdbcType=VARCHAR}, 	#{cacodes.career_task,jdbcType=VARCHAR}, 
+							#{cacodes.work_year,jdbcType=VARCHAR}, 	#{cacodes.final_position,jdbcType=VARCHAR}
+						)
+						</if>
+					</foreach>
+			</if>
+	
+		SELECT * FROM DUAL
+	</insert>		
+	
+	
+	<select id="selectEmpCount"  parameterType="PagingVO" resultType="int">
+		select count(*)
+		 FROM DEPARTMENT a left outer join employee b on(a.dep_no=b.dep_no)
+								left outer join salary_trans c on(b.emp_no = c.emp_no)
+								left outer join position d on(b.pos_no = d.pos_no)
+                                inner  join rule e on(b.fulltime = e.code)
+								<include refid="searchFrag"/>
+	
+	</select>
+
+	<update id="update_pw" parameterType="EmployeeVO">
+		update employee set emp_pass = #{emp_pass} where emp_no=#{emp_no}
+	</update>
+		
+	
+	
+</mapper>
+

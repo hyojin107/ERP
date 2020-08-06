@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.buy.IBuy_ReturnDAO">
+	
+	<insert id="insertReturn" parameterType="Buy_ReturnVO">
+		<selectKey resultType="int" keyProperty="ret_no" order="BEFORE">
+			SELECT NVL(MAX(ret_no), 0)+1 FROM BUY_RETURN
+		</selectKey>
+		INSERT ALL
+			INTO BUY_RETURN (
+				RET_NO, PUR_CODE, RET_DATE, EMP_NO, STATUS
+			) VALUES(
+				#{ret_no}, #{pur_code,jdbcType=NUMERIC}, sysdate, #{emp_no,jdbcType=VARCHAR}, 'Q001'
+			)
+			<if test="matList != null">
+				<foreach collection="matList" item="mat" index="idx">
+					INTO BUY_RET_M(
+						RETMAT_NO, ORMAT_CODE, RET_NO, RETMAT_QTY
+					)VALUES(
+						#{mat.retmat_no,jdbcType=NUMERIC}, #{mat.ormat_code,jdbcType=NUMERIC},
+						#{ret_no}, #{mat.retmat_qty,jdbcType=NUMERIC}
+					)
+				</foreach>
+			</if>
+			<if test="itemList != null">
+				<foreach collection="itemList" item="item" index="idx">
+				INTO BUY_RET_I (
+					RETITEM_NO, ITEM_NO, RET_NO, RETITEM_QTY
+				) VALUES(
+					#{item.retitem_no,jdbcType=NUMERIC}, #{item.item_no,jdbcType=NUMERIC},
+					#{ret_no}, #{item.retitem_qty,jdbcType=NUMERIC}
+				)
+			</foreach>
+			</if>
+		SELECT * FROM DUAL
+	</insert>
+	<!-- 반품원자재목록 PK -->
+	<select id="selectRetMatPK" resultType="int">
+		SELECT NVL(MAX(retmat_no), 0)+1 FROM BUY_RET_M
+	</select>
+	<!-- 반품일반목록 PK -->
+	<select id="selectRetItemPK" resultType="int">
+		SELECT NVL(MAX(retitem_no), 0)+1 FROM BUY_RET_I
+	</select>
+	
+	
+	
+	<!-- 검색 -->
+	<sql id="searchFrag">
+		FROM (
+		    SELECT RM.RETMAT_NO, RM.ORMAT_CODE, OM.MAT_NO, RM.RET_NO, RM.RETMAT_QTY qty, 
+		           M.MAT_NAME, LP.LPROD_NAME, M.MAT_STAND_SIZE, OM.COST
+		    FROM BUY_RET_M RM LEFT OUTER JOIN BUY_OR_MAT OM ON(RM.ORMAT_CODE=OM.ORMAT_CODE)
+		                      LEFT OUTER JOIN MATERIAL M ON(M.MAT_NO = OM.MAT_NO)
+		                      LEFT OUTER JOIN LPROD LP ON (LP.LPROD_NO = M.LPROD_NO)
+		        UNION
+		    SELECT RI.RETITEM_NO, NULL, RI.ITEM_NO, RI.RET_NO, I.ITEM_QTY qty, 
+		           I.ITEM_NAME, I.ITEM_LPROD, I.ITEM_STAND_SIZE, I.ITEM_COST
+		    FROM BUY_RET_I RI LEFT OUTER JOIN BUY_ITEM I ON(RI.ITEM_NO=I.ITEM_NO)
+		    
+		) MI LEFT OUTER JOIN BUY_RETURN R ON (MI.RET_NO=R.RET_NO)
+		     LEFT OUTER JOIN EMPLOYEE E ON(R.EMP_NO=E.EMP_NO)
+		     LEFT OUTER JOIN DEPARTMENT D ON(E.DEP_NO=D.DEP_NO)
+		     LEFT OUTER JOIN BUY_PURCHASE P ON(R.PUR_CODE=P.PUR_CODE)
+		     LEFT OUTER JOIN BUY_ORDER O ON(P.OR_CODE=O.OR_CODE)
+		     LEFT OUTER JOIN BUYER B ON(O.BUYER_NO=B.BUYER_NO)
+		     LEFT OUTER JOIN MATERIAL_OUT MO ON(MO.RETMAT_NO=MI.RETMAT_NO)
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="'Q001'.equals(detailSearch.status)">	<!-- 반품 진행중 -->
+					AND MO.RETMAT_NO IS NULL
+					AND R.STATUS LIKE 'Q001'
+				</if>
+				<if test="'Q002'.equals(detailSearch.status)">	<!-- 출고완료 -->
+					AND MO.RETMAT_NO IS NOT NULL
+				</if>
+				<if test="'Q006'.equals(detailSearch.status)">	<!-- 반품취소 -->
+					AND MO.RETMAT_NO IS NULL
+					AND R.STATUS LIKE 'Q006'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.ret_date)">
+					AND R.RET_DATE >= TO_DATE(#{detailSearch.ret_date})
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.ret_dateEnd)">
+					<![CDATA[
+					AND	R.RET_DATE < TO_DATE(#{detailSearch.ret_dateEnd})+1
+					]]>
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+					AND E.EMP_NO = #{detailSearch.emp_no}
+				</if>	
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.buyer_no)">
+					AND B.BUYER_NO LIKE #{detailSearch.buyer_no}
+				</if>
+			</if>
+		</trim>
+	</sql>
+	<select id="selectReturnCount" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+	    <include refid="searchFrag"/>
+	</select>
+	<!-- 발주서 리스트 -->
+	<resultMap type="Buy_ReturnVO" id="retMap" autoMapping="true">
+		<id property="ret_no" column="RET_NO"/>
+		<association property="buyerVO" javaType="BuyerVO" autoMapping="true"/>
+		<collection property="unionList" javaType="java.util.List" ofType="Buy_Return_UnionVO" autoMapping="true"/>
+	</resultMap>
+	<select id="selectReturnList" parameterType="PagingVO" resultMap="retMap">
+		SELECT MI.RETMAT_NO, MI.ORMAT_CODE, MI.MAT_NO, R.RET_NO, MI.qty, 
+		       MI.MAT_NAME, MI.LPROD_NAME, MI.MAT_STAND_SIZE stand_size, MI.COST,
+		       R.PUR_CODE, R.EMP_NO, E.EMP_NAME, D.DEP_NAME, TO_CHAR(R.RET_DATE,'YYYY-MM-DD') RET_DATE, 
+		       B.BUYER_NO, B.BUYER_NAME, TO_CHAR(P.PUR_DATE,'YYYY-MM-DD') PUR_DATE
+		<include refid="searchFrag" />
+		ORDER BY R.RET_DATE DESC
+	</select>
+	
+	<!-- 반품 취소 -->
+	<delete id="deleteReturn" parameterType="Buy_ReturnVO">
+		UPDATE BUY_RETURN SET STATUS = 'Q006'
+		WHERE RET_NO IN(
+			<foreach collection="ret_noList" item="retNo" separator=",">
+				#{retNo}
+			</foreach>
+		)
+	</delete>
+	
+	
+</mapper>
+
+

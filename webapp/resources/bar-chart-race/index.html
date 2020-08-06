@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Bar Chart Race</title>
+<link rel="stylesheet" type="text/css" href="./inspector.css">
+<body>
+<h1>품목별손익현황</h1><br>
+<table>
+	<tfoot>
+		<tr>
+			<td colspan="8">
+				<div class="d-block d-md-flex align-items-center d-print-none">
+				<div class="form-inline d-flex ml-md-auto d-print-none" id="searchUI">
+					<text>년도</text>
+					<select name="searchType" class="form-control mr-2">
+					</select>
+					<input class="btn btn-success mr-2" type="button" value="<spring:message code='search'/>" id="searchBtn">
+				</div>
+				</div>
+			</td>
+		</tr>
+	</tfoot>
+</table>
+<script type="module">
+
+import define from "./index.js";
+import {Runtime, Library, Inspector} from "./runtime.js";
+
+const runtime = new Runtime();
+const main = runtime.module(define, Inspector.into(document.body));
+
+</script>

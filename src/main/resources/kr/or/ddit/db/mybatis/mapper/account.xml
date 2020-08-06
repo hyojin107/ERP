@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.account.IAccountDAO">
+	<insert id="insertAccount" parameterType="AccountVO">
+		<selectKey order="BEFORE" resultType="int" keyProperty="account_no">
+			SELECT NVL(MAX(ACCOUNT_NO), 0) + 1 FROM ACCOUNT
+		</selectKey>
+		INSERT INTO ACCOUNT (
+		    ACCOUNT_NO,
+		    STAND_NO,
+		    ACCOUNT_NAME,
+		    USE_STATUS,
+		    ETC
+		) VALUES (
+			#{account_no,jdbcType=NUMERIC},
+			#{stand_no,jdbcType=CHAR},
+		    #{account_name,jdbcType=VARCHAR},
+		    #{use_status,jdbcType=VARCHAR},
+		    #{etc,jdbcType=VARCHAR}
+		)
+	</insert>
+	<sql id="searchFrag">
+		<where>
+			<if test="searchVO!=null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+					<when test="'account_no'.equals(searchVO.searchType)">
+						AND INSTR(ACCOUNT_NO, #{searchVO.searchWord}) > 0
+					</when>
+					<when test="'account_name'.equals(searchVO.searchType)">
+						AND INSTR(ACCOUNT_NAME, #{searchVO.searchWord}) > 0
+					</when>
+					<otherwise>
+						AND (INSTR(ACCOUNT_NO, #{searchVO.searchWord}) > 0
+						OR INSTR(ACCOUNT_NAME, #{searchVO.searchWord}) > 0)
+					</otherwise>
+				</choose>
+			</if>
+		</where>
+		ORDER BY A.ACCOUNT_NO
+	</sql>
+	<select id="selectAccountCount" parameterType="PagingVO" resultType="int">
+		SELECT COUNT(ACCOUNT_NO)
+		FROM ACCOUNT A
+		<include refid="searchFrag" />
+	</select>
+	<select id="selectAccountList" parameterType="PagingVO" resultType="AccountVO">
+		SELECT 		ACCOUNT_NO,    B.STAND_NAME,    ACCOUNT_NAME,    C.NAME USE_STATUS,    ETC,
+					DIVISION
+		FROM ACCOUNT A INNER JOIN STANDARD_ACC B ON (A.STAND_NO = B.STAND_NO)
+						INNER JOIN RULE C ON (A.USE_STATUS=C.CODE)
+		<include refid="searchFrag" />
+	</select>
+	<select id="selectAccount" parameterType="int" resultType="AccountVO">
+		SELECT 		ACCOUNT_NO,    A.STAND_NO,    ACCOUNT_NAME,    A.USE_STATUS,    ETC,
+					B.STAND_NAME, B.DIVISION
+		FROM ACCOUNT A INNER JOIN STANDARD_ACC B ON (A.STAND_NO=B.STAND_NO)
+		WHERE ACCOUNT_NO = #{account_no,jdbcType=NUMERIC}
+	</select>
+	<update id="updateAccount" parameterType="AccountVO">
+		UPDATE ACCOUNT SET
+		    STAND_NO = #{stand_no,jdbcType=CHAR},    ACCOUNT_NAME = #{account_name,jdbcType=VARCHAR},   
+		    USE_STATUS = #{use_status,jdbcType=VARCHAR},    ETC = #{etc,jdbcType=VARCHAR}
+		WHERE ACCOUNT_NO = #{account_no,jdbcType=NUMERIC}
+	</update>
+	<select id="selectStandardList" resultType="StandardVO">
+		SELECT * FROM STANDARD_ACC
+	</select>
+	<update id="deleteAccount" parameterType="int">
+		UPDATE ACCOUNT SET USE_STATUS = 'G002' 
+		WHERE ACCOUNT_NO = 3{account_no,jdbcType=NUMERIC}
+	</update>
+</mapper>

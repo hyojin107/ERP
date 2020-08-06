@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.product.IwareHouseDao">
+<resultMap type="WareHouseVO" id="housemap" autoMapping="true">
+<id property="store_no" column="store_no"/>
+
+</resultMap>
+
+
+
+
+<select id="SelectSector" parameterType="string" resultType="StuffVO">
+SELECT A.*
+FROM 
+(
+SELECT 
+A.PROD_NO || B.MAT_NO STUFF_NO, A.PROD_CNT || B.MAT_CNT STUFF_CNT,
+C.PROD_NAME || D.MAT_NAME STUFF_NAME, A.SECTOR_NO || B.SECTOR_NO SECTOR_NO,
+C.PROD_STOCK_SIZE || D.MAT_STOCK_SIZE STUFF_SIZE
+FROM PROD_SECTOR A FULL OUTER JOIN MAT_SECTOR B ON (B.SECTOR_NO = A.SECTOR_NO)
+LEFT OUTER JOIN PROD C ON ( A.PROD_NO = C.PROD_NO)
+LEFT OUTER JOIN MATERIAL D ON (B.MAT_NO = D.MAT_NO)
+) A 
+WHERE A.SECTOR_NO like '%${sector_no}%'
+
+</select>
+
+<select id="WareHouseList" parameterType="string" resultType="WareHouseVO">
+SELECT STORE_NO,
+    LSTORE_NO,
+    STORE_NAME,
+    STORE_DEF,
+    USE_STATUS
+    FROM STORE WHERE LSTORE_NO LIKE '${lstore_no}%'
+</select>
+
+<select id="GetJsonFilename"  resultType="string">
+select store_json from store where store_no = #{store_no}
+</select>
+
+<select id="LWareHouseList" resultType="LWareHouseVO">
+
+select LSTORE_NO,LSTORE_NAME from lstore 
+</select>
+
+
+<resultMap type="WareHouseVO" id="houseAlList" autoMapping="true">
+
+<collection property="matList" javaType="java.util.List" autoMapping="true" ofType="MaterialSectorVO" />
+<collection property="prodList" javaType="java.util.List" autoMapping="true" ofType="ProdSectorVO" />
+
+</resultMap>
+
+<select id="SelectSectorList" parameterType="java.util.HashMap" resultType="StuffVO">
+SELECT A.*, C.STORE_NO
+FROM 
+(
+SELECT 
+A.PROD_NO || B.MAT_NO STUFF_NO, A.PROD_CNT || B.MAT_CNT STUFF_CNT,
+C.PROD_NAME || D.MAT_NAME STUFF_NAME, A.SECTOR_NO || B.SECTOR_NO SECTOR_NO,
+C.PROD_STOCK_SIZE || D.MAT_STOCK_SIZE STUFF_SIZE
+FROM PROD_SECTOR A FULL OUTER JOIN MAT_SECTOR B ON (B.SECTOR_NO = A.SECTOR_NO)
+LEFT OUTER JOIN PROD C ON ( A.PROD_NO = C.PROD_NO)
+LEFT OUTER JOIN MATERIAL D ON (B.MAT_NO = D.MAT_NO)
+) A LEFT OUTER JOIN SECTOR B ON (A.SECTOR_NO = B.SECTOR_NO)
+LEFT OUTER JOIN STORE C ON(B.STORE_NO = C.STORE_NO)
+WHERE C.STORE_NO = #{store_no} AND A.STUFF_NAME = #{stuff_name}
+
+</select>
+
+
+
+<select id="SelectWareHouseList" parameterType="WareHouseVO" resultMap="houseAlList" >
+
+<choose>
+<when test="searchvo.searchType.equals('WH01')">
+SELECT A.*, B.PROD_NAME, B.PROD_STOCK_SIZE, #{store_no} AS STORE_NO FROM
+(
+SELECT C.PROD_NO, SUM(C.PROD_CNT) PROD_CNT FROM
+STORE A INNER JOIN SECTOR B ON (A.STORE_NO = B.STORE_NO)
+RIGHT OUTER JOIN PROD_SECTOR C ON (B.SECTOR_NO = C.SECTOR_NO)
+WHERE A.STORE_NO = #{store_no}
+GROUP BY C.PROD_NO
+) A LEFT OUTER JOIN PROD B ON(A.PROD_NO = B.PROD_NO)
+
+</when>
+<otherwise>
+SELECT A.*, B.MAT_NAME, B.MAT_STOCK_SIZE FROM
+(
+SELECT C.MAT_NO, SUM(C.MAT_CNT) MAT_CNT FROM
+STORE A INNER JOIN SECTOR B ON (A.STORE_NO = B.STORE_NO)
+RIGHT OUTER JOIN MAT_SECTOR C ON (B.SECTOR_NO = C.SECTOR_NO)
+WHERE A.STORE_NO = #{store_no}
+GROUP BY C.MAT_NO
+) A LEFT OUTER JOIN MATERIAL B ON(A.MAT_NO = B.MAT_NO)
+</otherwise>
+</choose>
+</select>
+
+<insert id="InsertWareHouse" parameterType="WareHouseVO">
+<selectKey keyProperty="store_no" resultType="string" order = "BEFORE" >
+SELECT 'W' || LPAD(TO_NUMBER(NVL(SUBSTR(MAX(STORE_NO),2), '0'))+1,4,'0')  FROM STORE
+</selectKey>
+INSERT 
+INTO STORE(STORE_NO,LSTORE_NO, STORE_NAME, STORE_DEF, USE_STATUS)
+VALUES( #{store_no}, #{lstore_no}, #{store_name}, #{store_def}, 'G001' )
+</insert>
+
+<insert id="InsertSector" parameterType="java.util.List">
+
+<foreach collection="list" item= "item" index = "index" separator=" " open="INSERT ALL " close="SELECT * FROM DUAL">
+INTO SECTOR(SECTOR_NO, STORE_NO) VALUES
+(
+'${item.sector_no}', '${item.store_no}' 
+)
+</foreach>
+
+</insert>
+
+
+</mapper>

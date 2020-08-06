@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.ITransDetailsDAO">
+	
+	<sql id="searchFlag">
+		FROM OR_TRANS T LEFT OUTER JOIN OR_SHIPMENT S ON (T.SHIP_NO = S.SHIP_NO)
+		                LEFT OUTER JOIN OR_DELIVERY D ON (D.DELIV_NO = S.DELIV_NO)
+		                LEFT OUTER JOIN ORDERP O ON (D.OR_NO=O.OR_NO)
+		                LEFT OUTER JOIN BUYER B ON (B.BUYER_NO=O.BUYER_NO)
+		                LEFT OUTER JOIN OR_PLIST L ON (L.OR_NO=O.OR_NO)
+		                LEFT OUTER JOIN PROD P ON (P.PROD_NO=L.PROD_NO)
+		                LEFT OUTER JOIN EMPLOYEE E ON (S.EMP_NO = E.EMP_NO)
+	      				LEFT OUTER JOIN OR_PLIST OL ON (O.OR_NO=OL.OR_NO)
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.tran_date)">
+					T.TRAN_DATE = #{detailSearch.tran_date}
+				</if>
+				<if test="detailSearch.prod!=null">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod[0].prod_no)">
+						AND '%'||L.PROD_NO LIKE #{detailSearch.prod_no}||'%'
+					</if>
+				</if>
+				<if test="detailSearch.shipment!=null">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.shipment[0].ship_p_date)">
+						AND '%'||S.SHIP_P_DATE LIKE #{detailSearch.ship_p_date}||'%'
+					</if>
+				</if>
+				<if test="detailSearch.shipment!=null">
+					<if test="(detailSearch.shipment[0].ship_no)!=null">
+						AND '%'||S.SHIP_NO = #{detailSearch.ship_no}||'%'
+					</if>
+				</if>
+				<if test="detailSearch.order!=null">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.order[0].or_req_date)">
+						AND '%'||O.OR_REQ_DATE = #{detailSearch.or_req_date}||'%'
+					</if>
+				</if>
+				<if test="detailSearch.order!=null">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.order[0].buyer_no)">
+						AND '%'||O.BUYER_NO = #{detailSearch.buyer_no}||'%'
+					</if>
+				</if>
+				<if test="detailSearch.order!=null">
+					<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.order[0].emp_no)">
+						AND '%'||O.EMP_NO = #{detailSearch.emp_no}||'%'
+					</if>
+				</if>
+			</if>
+		</trim>
+	</sql>
+	
+	
+	<insert id="insertTransD" parameterType="vo.order.TransDetailsVO">
+		<selectKey resultType="int" keyProperty="tran_no" order="BEFORE">
+			SELECT NVL(MAX(TRAN_NO), 0)+1 FROM OR_TRANS			
+		</selectKey>
+		INSERT INTO OR_TRANS(
+			 TRAN_NO, SHIP_NO, TRAN_DATE
+		) VALUES (
+			#{tran_no, jdbcType=NUMERIC}, #{ship_no, jdbcType=NUMERIC}, NVL(DECODE(#{tran_date}, '', SYSDATE, #{tran_date}), SYSDATE)
+		)
+	</insert>
+	
+	<resultMap type="vo.order.TransDetailsVO" id="transMap" autoMapping="true"> 
+		<id property="tran_no" column="TRAN_NO" />
+		<collection property="shipment" javaType="java.util.List" ofType="vo.order.ShipmentVO" autoMapping="true" />
+		<collection property="prod" javaType="java.util.List" ofType="vo.wareHouse.ProdVO" autoMapping="true"/>
+		<collection property="orderList" javaType="java.util.List" ofType="vo.order.OrderListVO" autoMapping="true" />
+		<collection property="order" javaType="java.util.List" ofType="vo.order.OrderVO" autoMapping="true" />
+		<collection property="buyerList" javaType="java.util.List" ofType="vo.BuyerVO" autoMapping="true" />
+	</resultMap>
+	
+	<select id="selectTransDList" parameterType="vo.PagingVO" resultMap="transMap">
+<!-- 		SELECT A.* -->
+<!-- 		FROM (  -->
+				SELECT ROWNUM RNUM, 
+					T.TRAN_NO, TO_CHAR(S.SHIP_P_DATE, 'YYYY-MM-DD') SHIP_P_DATE, P.PROD_NAME, 
+					TO_CHAR(O.OR_REQ_DATE, 'YYYY-MM-DD') OR_REQ_DATE, B.BUYER_NO, B.BUYER_NAME,
+					E.EMP_NAME,
+					OL.ORP_QTY, OL.ORP_PRICE, P.PROD_STANDARD, P.PROD_STAND_SIZE, P.PROD_OUT_PRICE
+					<include refid="searchFlag" />
+		      		ORDER BY T.TRAN_NO DESC
+<!-- 		) A -->
+<!-- 		WHERE RNUM BETWEEN #{startRow} AND #{endRow}		       -->
+	</select>
+	
+	<select id="selectTransD" parameterType="int" resultMap="transMap">
+		SELECT B.BUYER_NAME, B.BUYER_NO, 
+			TO_CHAR(S.SHIP_P_DATE, 'YYYY-MM-DD') SHIP_P_DATE, S.SHIP_NO, 
+			L.PROD_NO, P.PROD_NAME, 
+			TO_CHAR(T.TRAN_DATE, 'YYYY-MM-DD') TRAN_DATE, T.TRAN_NO,
+			P.PROD_STANDARD, P.PROD_STAND_SIZE, P.PROD_OUT_PRICE,
+			OL.ORP_QTY, OL.ORP_PRICE,
+			E.EMP_NO, E.EMP_NAME
+		FROM OR_TRANS T LEFT OUTER JOIN OR_SHIPMENT S ON (T.SHIP_NO = S.SHIP_NO)
+		                LEFT OUTER JOIN OR_DELIVERY D ON (D.DELIV_NO = S.DELIV_NO)
+		                LEFT OUTER JOIN ORDERP O ON (D.OR_NO=O.OR_NO)
+		                LEFT OUTER JOIN BUYER B ON (B.BUYER_NO=O.BUYER_NO)
+		                LEFT OUTER JOIN OR_PLIST L ON (L.OR_NO=O.OR_NO)
+		                LEFT OUTER JOIN PROD P ON (P.PROD_NO=L.PROD_NO)
+		                LEFT OUTER JOIN EMPLOYEE E ON (S.EMP_NO = E.EMP_NO)
+	      				LEFT OUTER JOIN OR_PLIST OL ON (O.OR_NO=OL.OR_NO)
+		WHERE T.TRAN_NO = #{tran_no}
+	</select>
+	
+	<select id="selectTransDCount" parameterType="vo.PagingVO" resultType="int">
+		SELECT COUNT(*)
+		<include refid="searchFlag" />
+	</select>
+	
+	
+	
+	<update id="updateTransDetails" parameterType="vo.order.TransDetailsVO">
+		UPDATE OR_TRANS
+		SET 
+			SHIP_NO = #{ship_no, jdbcType=NUMERIC},
+			TRAN_DATE = NVL(DECODE(#{tran_date, jdbcType=DATE},'',SYSDATE,#{tran_date, jdbcType=DATE}), SYSDATE)
+		WHERE 
+			TRAN_NO = #{tran_no}
+	</update>
+
+	<delete id="deleteTransDetails" parameterType="int">
+		DELETE FROM OR_TRANS
+		WHERE TRNA_NO = #{tran_no}
+	</delete>
+	
+	
+
+</mapper>

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.IDeliveryOrderDAO">
+
+
+	<sql id="searchFlag">
+		FROM OR_DELIVERY A INNER JOIN EMPLOYEE B ON (A.EMP_NO = B.EMP_NO)
+						   LEFT OUTER JOIN (
+						   	SELECT DISTINCT D.OR_NO, E.PROD_NO, E.PROD_NAME
+						   	FROM OR_PLIST D INNER JOIN PROD E ON (D.PROD_NO = E.PROD_NO)
+						   ) C ON (A.OR_NO = C.OR_NO)
+<!-- 						   LEFT OUTER JOIN ORDERP E ON (A.OR_NO = E.OR_NO) -->
+ 						   
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="'OR01'.equals(detailSearch.status) ">
+					A.DELIV_PROG LIKE 'OR01'
+				</if>
+				<if test="'OR02'.equals(detailSearch.status) ">
+					A.DELIV_PROG LIKE 'OR02'
+				</if>
+				<if test="'OR99'.equals(detailSearch.status) ">
+					A.DELIV_PROG LIKE 'OR99'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.deliv_date)">
+					AND A.DELIV_DATE LIKE '%'||#{detailSearch.deliv_date}||'%'
+				</if>
+				<if test="(detailSearch.or_no)!=null">
+					AND A.OR_NO LIKE '%'||#{detailSearch.or_no}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+					AND B.EMP_NO LIKE '%'||#{detailSearch.emp_no}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+					AND B.EMP_NO LIKE '%'||#{detailSearch.emp_no}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.deliv_schd)">
+					AND A.DLEIV_SCHD LIKE '%'||#{detailSearch.deliv_schd}||'%'
+				</if>
+<!-- 				<if test="detailSearch.order!=null"> -->
+<!-- 					<if test="detailSearch.order.orderList!=null"> -->
+<!-- 						<if test="detailSearch.order.orderList.prodList!=null"> -->
+<!-- 							<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.order.orderList.prodList.prod_name)"> -->
+<!-- 								AND C.PROD_NAME = #{detailSearch.prod_name} -->
+<!-- 							</if> -->
+<!-- 						</if> -->
+<!-- 					</if> -->
+<!-- 				</if> -->
+			</if>
+		</trim>
+	</sql>
+	
+	<insert id="insertDelivery" parameterType="vo.order.DeliveryOrderVO">
+		<selectKey resultType="int" keyProperty="deliv_no" order="BEFORE">
+			SELECT NVL(MAX(DELIV_NO), 0)+1 FROM OR_DELIVERY		
+		</selectKey>
+		INSERT INTO OR_DELIVERY (
+	    	DELIV_NO, OR_NO, EMP_NO, DELIV_DATE, DELIV_PROG, DELIV_SCHD
+		) VALUES (
+	    	#{deliv_no, jdbcType=NUMERIC}, #{or_no, jdbcType=NUMERIC}, #{emp_no, jdbcType=CHAR},
+	    	NVL(DECODE(#{deliv_date}, '', SYSDATE, #{deliv_date}), SYSDATE), 'OR01', NVL(DECODE(#{deliv_schd}, '', SYSDATE+7, #{deliv_schd}), SYSDATE+7)
+		)
+	</insert>
+	
+	
+	<resultMap type="vo.order.DeliveryOrderVO" id="delivMap" autoMapping="true">
+		<id property="deliv_no" column="DELIV_NO" />
+		<collection property="order" javaType="java.util.List" ofType="vo.order.OrderVO" autoMapping="true">
+<!-- 			<association property="orderList" javaType="java.util.List" ofType="vo.order.OrderListVO"> -->
+			<collection property="orderList" javaType="java.util.List" ofType="vo.order.OrderListVO" autoMapping="true">
+				<collection property="prodList" javaType="java.util.List" ofType="vo.wareHouse.ProdVO" autoMapping="true"/>
+			</collection>
+		</collection>
+	</resultMap>
+	<select id="selectDelivery" parameterType="int" resultMap="delivMap">
+		SELECT 
+			Z.DELIV_NO, Z.OR_NO, Z.EMP_NO, TO_CHAR(Z.DELIV_DATE, 'YYYY-MM-DD') DELIV_DATE,
+		    Z.DELIV_PROG, TO_CHAR(Z.DELIV_SCHD, 'YYYY-MM-DD') DELIV_SCHD,
+			V.PROD_NO, V.PROD_NAME, V.PROD_STANDARD, V.ORP_QTY, V.PROD_STAND_SIZE,
+			Y.EMP_NO, Y.EMP_NAME, 
+			U.BUYER_NAME, U.BUYER_NO
+		FROM OR_DELIVERY Z INNER JOIN EMPLOYEE Y ON (Z.EMP_NO = Y.EMP_NO)
+						   LEFT OUTER JOIN (
+						   		SELECT W.PROD_NO, W.PROD_NAME, W.PROD_STANDARD, W.PROD_STAND_SIZE, X.ORP_QTY, X.OR_NO
+						   		FROM OR_PLIST X INNER JOIN PROD W ON (X.PROD_NO = W.PROD_NO)
+						   ) V ON (Z.OR_NO = V.OR_NO)
+						   LEFT OUTER JOIN (
+						   		SELECT S.OR_NO, T.BUYER_NO, T.BUYER_NAME
+						   		FROM ORDERP S INNER JOIN BUYER T ON (S.BUYER_NO = T.BUYER_NO) 
+						   ) U ON (Z.OR_NO = U.OR_NO)
+		WHERE DELIV_NO = #{deliv_no}
+	</select>
+	
+	<select id="selectDeliveryCount" parameterType="vo.PagingVO" resultType="int">
+		SELECT COUNT(*)
+		<include refid="searchFlag" />
+		
+		
+	</select>
+		
+	<select id="selectDeliveryList" parameterType="vo.PagingVO" resultMap="delivMap">
+<!-- 		SELECT T.* -->
+<!-- 		FROM ( -->
+			SELECT ROWNUM RNUM, A.DELIV_NO, TO_CHAR(A.DELIV_DATE, 'YYYY-MM-DD') DELIV_DATE, A.OR_NO, B.EMP_NAME, 
+			TO_CHAR(A.DELIV_SCHD, 'YYYY-MM-DD'), 
+			C.PROD_NAME, A.DELIV_PROG
+			<include refid="searchFlag" />
+			ORDER BY A.OR_NO DESC
+<!-- 		) T -->
+<!-- 		WHERE RNUM BETWEEN #{startRow} AND #{endRow} -->
+	</select>
+	
+	<update id="updateDelivery" parameterType="vo.order.DeliveryOrderVO">
+		UPDATE OR_DELIVERY
+	    SET
+	        DELIV_DATE = NVL(DECODE(#{deliv_date, jdbcType=DATE},'',SYSDATE,#{deliv_date, jdbcType=DATE}), SYSDATE),
+	        DELIV_PROG = NVL(#{deliv_prog, jdbcType=CHAR}, 'OR01'),
+	        DELIV_SCHD = NVL(DECODE(#{deliv_schd, jdbcType=DATE},'',SYSDATE+7,#{deliv_schd, jdbcType=DATE}), SYSDATE+7),
+	        EMP_NO = #{emp_no}
+		WHERE
+	    	DELIV_NO = #{deliv_no}
+	</update>
+
+	<select id="exist" parameterType="int">
+		SELECT COUNT(*) 
+		FROM ORDERP
+		WHERE OR_NO = #{or_no}
+	</select>
+	
+	<update id="deleteDelivery" parameterType="int">
+	UPDATE OR_DELIVERY
+	SET
+	    DELIV_PROG = 'OR99'
+	WHERE
+	    DELIV_NO = #{deliv_no}	
+	</update>
+
+</mapper>

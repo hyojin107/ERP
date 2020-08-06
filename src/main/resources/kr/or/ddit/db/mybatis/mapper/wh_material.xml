@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.wareHouse.IMaterialDAO">
+
+<sql id="searchFrag">
+	FROM material A 
+	<trim prefix=" WHERE " prefixOverrides="AND |OR">
+    	<if test="detailSearch!=null">
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_name)">
+    			A.MAT_NAME LIKE '%' || #{detailSearch.mat_name} || '%'
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_no)">
+    			AND A.MAT_NO LIKE '%' || #{detailSearch.mat_no} || '%'
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.lprod_no)">
+    			AND A.LPROD_NO = #{detailSearch.lprod_no}
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.mat_use)">
+    			AND A.MAT_USE = #{detailSearch.mat_use}
+    		</if>
+    		<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.startDay) and @org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.endDay)">
+    			<![CDATA[
+    				AND A.MAT_VALIDITY >= #{detailSearch.startDay} AND A.MAT_VALIDITY < #{detailSearch.endDay}
+    			]]>
+    		</if>
+    	</if>
+    </trim>
+</sql>
+
+<!-- 원자재 갯수  -->
+<select id="readMatCount" resultType="int" parameterType="PagingVO">
+	select count(A.MAT_NO)
+	<include refid = "searchFrag"/>
+</select>
+
+<!-- 원자재 목록 -->
+<select id="readMatList" resultType="MaterialVO" parameterType="vo.PagingVO">
+	SELECT Z.*
+	FROM(
+		select ROWNUM RNUM,
+		 A.mat_no, A.lprod_no, A.mat_standard, A.mat_stand_size
+		 , A.mat_stock_size, A.mat_name, A.mat_in_cost, A.mat_stock
+		 , A.mat_safe_stock, to_char(A.mat_validity,'YYYY-MM-DD') mat_validity
+		 , A.mat_use
+		<include refid="searchFrag"/> 
+		ORDER BY RNUM ASC
+	) Z
+</select>
+
+<resultMap type="MaterialVO" id="matMap" autoMapping="true">
+	<association property="lprod_no" javaType="String">
+		<result property="" column="lprod_no"/>
+	</association>
+</resultMap>
+
+<!-- 원자재 상세보기 -->
+<select id="readMat" parameterType="string" resultMap="matMap">
+	SELECT
+	    A.mat_no, A.lprod_no, A.mat_standard, A.mat_stand_size,
+	    A.mat_stock_size, A.mat_name, A.mat_in_cost,
+	    A.mat_stock, A.mat_safe_stock, to_char(A.mat_validity,'YYYY-MM-DD') mat_validity, A.mat_use
+	FROM
+		material A 
+	WHERE A.mat_no = #{mat_no}
+</select>
+
+<!-- 원자재 입고 -->
+<insert id="insertMat" parameterType="MaterialVO">
+<selectKey resultType="string" keyProperty="mat_no" order="BEFORE">
+	SELECT 'M' || LPAD(TO_NUMBER(SUBSTR(MAX(MAT_NO),2))+1,4,'0')
+	FROM MATERIAL
+</selectKey>
+	INSERT INTO material (
+		mat_no,
+		lprod_no, 
+	    mat_standard,
+	    mat_stand_size,
+	    mat_stock_size,
+	    mat_name,
+	    mat_in_cost,
+	    mat_stock,
+	    mat_safe_stock,
+	    mat_validity,
+	    mat_use
+	) VALUES (
+		#{mat_no},
+		#{lprod_no,jdbcType=CHAR}, 
+	    #{mat_standard,jdbcType=NUMERIC},
+	    #{mat_stand_size,jdbcType=VARCHAR},
+	    #{mat_stock_size,jdbcType=VARCHAR},
+	    #{mat_name,jdbcType=VARCHAR},
+	    0,
+	    0,
+	    #{mat_safe_stock,jdbcType=NUMERIC},
+	    #{mat_validity,jdbcType=DATE},
+	    #{mat_use,jdbcType=CHAR}
+	)
+</insert>
+
+<!-- 원자재 수정 -->
+<update id="modifyMat" parameterType="MaterialVO">
+	UPDATE material SET 
+		MAT_NAME =#{mat_name,jdbcType=VARCHAR},
+		MAT_VALIDITY=to_date(#{mat_validity},'YYYY-MM-DD'),
+		MAT_STOCK_SIZE=#{mat_stock_size,jdbcType=VARCHAR},
+		MAT_SAFE_STOCK=#{mat_safe_stock,jdbcType=NUMERIC},
+		MAT_STANDARD=#{mat_standard,jdbcType=NUMERIC},
+		MAT_STAND_SIZE=#{mat_stand_size,jdbcType=VARCHAR},
+		LPROD_NO=#{lprod_no,jdbcType=VARCHAR},
+		MAT_USE =#{mat_use,jdbcType=VARCHAR}
+	WHERE mat_no = #{mat_no,jdbcType=VARCHAR}
+</update>
+
+<!-- 원자재 삭제 -->
+<update id="deleteMat" parameterType="MaterialVO">
+	UPDATE material SET mat_use = 'G002'
+	WHERE mat_no = #{mat_no,jdbcType=CHAR}
+</update>
+</mapper>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.emp.ISalary_SpecificationDAO">
+<sql id="searchFrag">
+			WHERE A.DEP_NO2 IS NOT NULL <!-- 부서가 NOT NULL이 아닐때 -->
+		<if test="detailSearch!=null">
+		  	<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.sal_date)">
+				 AND c.SAL_DATE BETWEEN  TRUNC(to_date(#{detailSearch.sal_date}),'MM') AND LAST_DAY(to_date(#{detailSearch.sal_date}))<!-- 날짜를 검색했을 때 -->
+			 </if>
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no2)">
+					and a.dep_no2 = #{detailSearch.dep_no2}
+			 </if>		 
+			 <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no)">
+					and a.dep_no = #{detailSearch.dep_no}
+			 </if>		 
+		 </if>
+</sql>
+	
+	<!-- 급여 리스트  -->
+	<select id="selectSalaryList" resultType="EmployeeVO" parameterType="PagingVO">
+	 select z.*
+		 from (
+		SELECT ROWNUM RNUM, a.dep_name dep_no, b.emp_no, c.SAL_DATE , d.POS_NAME pos_no,
+	                     b.emp_name, b.bank, b.emp_bankno , c.deduction, c.actual_payment
+			  FROM DEPARTMENT a inner join employee b on(a.dep_no =b.dep_no)
+								left outer join salary_trans c on(b.emp_no = c.emp_no)
+								left outer join position d on(b.pos_no = d.pos_no)
+								<include refid="searchFrag"/>
+			START WITH a.DEP_NO = b.dep_no
+			CONNECT BY a.DEP_NO = PRIOR a.DEP_NO2
+			) z
+		where rnum between #{startRow} and #{endRow}
+	
+	</select>
+	
+
+	
+	<!-- 글 하나를 클릭했을 때  사원의 정보를 가져오는거 -->
+	<select id="selectSalary" parameterType="string" resultType="EmployeeVO">
+		select 	a.emp_no, a.emp_name, a.bank, a.emp_bankno, b.dep_name dep_no,
+				d.pos_name pos_no , TO_CHAR(c.sal_date, 'YYYY-MM-DD') as sal_date
+		from employee a inner join department b on(a.dep_no = b.dep_no)
+						inner join salary_trans c on(a.emp_no = c.emp_no)
+						inner join position d on(a.pos_no = d.pos_no)
+		where a.emp_no= #{emp_no}
+	</select>
+	
+<!-- 	
+	  글 하나를 클릭했을때 사원의 급여정보를 가져오는거   -->
+<!-- 	<select id="selectMoney" parameterType="string" resultType="Salary_TransVO"> -->
+<!-- 		select	b.my_basicsalary, b.extension_pay, b.deduction, b.actual_payment -->
+	
+<!-- 		from  	employee a inner join salary_trans b on(a.emp_no = b.emp_no) -->
+<!-- 		where 	a.emp_no = #{emp_no} -->
+	
+<!-- 	</select> -->
+	
+	
+<!-- 	급여 기본 정보 가져오는거 하는곳 -->
+	<select id="selectSalaryCal"  resultType="Salary_CalVO">
+		select a.salary, b.pos_name, c.dep_no, a.pos_no
+		  from salary_cal a inner join position b ON(a.pos_no = b.pos_no)
+                    inner join department c on(a.dep_no = c.dep_no)
+                    order by 1 desc 
+	</select> 
+	
+	
+	
+	
+	<!-- 페이징을 하기위해 카운트 하는거  -->
+	<select id="selectSalaryCount" parameterType="PagingVO" resultType="int">
+		select count(*)
+		FROM DEPARTMENT a left outer join employee b on(a.dep_no=b.dep_no)
+							left outer join salary_trans c on(b.emp_no = c.emp_no)
+							left outer join position d on(b.pos_no = d.pos_no)
+		<include refid="searchFrag"/>
+	</select>
+	
+	
+	
+	
+	<!-- 급여메일발송 -->
+	<select id="selectEmailList" resultType="EmployeeVO" parameterType="PagingVO" > 
+		 select z.*
+		 from (
+		SELECT ROWNUM RNUM, a.dep_name dep_no, b.emp_no, c.SAL_DATE , d.POS_NAME pos_no,
+	                     b.emp_name, b.bank, b.emp_bankno , c.deduction, c.actual_payment
+			  FROM DEPARTMENT a inner join employee b on(a.dep_no =b.dep_no)
+								left outer join salary_trans c on(b.emp_no = c.emp_no)
+								left outer join position d on(b.pos_no = d.pos_no)
+								<include refid="searchFrag"/>
+			START WITH a.DEP_NO = b.dep_no
+			CONNECT BY a.DEP_NO = PRIOR a.DEP_NO2
+			) z
+		where rnum between #{startRow} and #{endRow}
+	
+	</select>
+	
+	<!-- 급여정책 수정 -->
+	<update id="updateSalaryCal" parameterType="Salary_CalVO">
+			update salary_cal <!-- 급여정책에서  직급번호가 같으면 급여 기준급을 변경하는거  -->
+			 set salary = #{salary}
+			 where pos_no = #{pos_no} and dep_no = #{dep_no}
+	</update>
+
+</mapper>

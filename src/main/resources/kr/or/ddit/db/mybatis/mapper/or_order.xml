@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.IOrderDAO">
+	
+	<sql id="searchFlag">
+		FROM ORDERP A INNER JOIN EMPLOYEE B ON (A.EMP_NO = B.EMP_NO)
+					  INNER JOIN BUYER C ON (A.BUYER_NO = C.BUYER_NO)
+					  INNER JOIN OR_PLIST D ON (A.OR_NO = D.OR_NO)
+<!-- 					  INNER JOIN OR_PLIST D ON (A.OR_NO = D.OR_NO) -->
+<!-- 					  LEFT OUTER JOIN ( -->
+<!-- 					  	SELCT DISTICT ORP_NO, PROD_NO, OR_NO -->
+<!-- 					  	FROM ORDERP A INNER JOIN OR_PLIST D ON (A.OR_NO = D.OR_NO) -->
+<!-- 					  ) D ON (A.OR_NO = D.OR_NO) -->
+					  
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="'OR01'.equals(detailSearch.status)"><!-- 주문서 진행중 -->
+					A.OR_STATUS LIKE 'OR01'
+				</if>
+				<if test="'OR02'.equals(detailSearch.status)"><!-- 주문서 완료 -->
+					A.OR_STATUS LIKE 'OR02'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.or_date)">
+					AND A.OR_DATE = #{detailSearch.or_date}
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+					AND B.EMP_NO LIKE '%'||#{detailSearch.emp_no}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_name)">
+					AND B.EMP_NAME LIKE '%'||#{detailSearch.emp_name}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.buyer_name)">
+					AND C.BUYER_NAME LIKE '%'||#{detailSearch.buyer_name}||'%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.or_req_date)">
+					AND A.OR_REQ_DATE LIKE '%'||#{detailSearch.or_req_date}||'%'
+				</if>
+<!-- 				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.prod_no)"> -->
+<!-- 					AND D.PROD_NO = #{deatilSearch.prod_no} -->
+<!-- 				</if> -->
+			</if>
+		</trim>
+	</sql>
+	
+	<!-- 주문상품목록 PK생성 -->
+	<select id="selectOrpNo" resultType="int">
+		SELECT NVL(MAX(ORP_NO), 0)+1 FROM OR_PLIST
+	</select>
+	
+	
+	<insert id="insertOrder" parameterType="vo.order.OrderVO">
+		<selectKey resultType="int" keyProperty="or_no" order="BEFORE">
+			SELECT NVL(MAX(OR_NO), 0)+1 FROM ORDERP
+		</selectKey>
+		
+		INSERT ALL
+			INTO ORDERP (
+				OR_NO, BUYER_NO, EMP_NO, EST_NO, 
+				OR_DATE, OR_REQ_DATE, 
+				OR_STATUS
+			)VALUES(
+				#{or_no, jdbcType=NUMERIC}, #{buyer_no, jdbcType=CHAR}, #{emp_no, jdbcType=CHAR}, #{est_no, jdbcType=CHAR},
+				NVL(DECODE(#{or_date},'',SYSDATE,#{or_date}), SYSDATE), NVL(DECODE(#{or_req_date},'' ,SYSDATE+7, #{or_req_date}), SYSDATE+7), 
+				'OR01'
+			)
+			<if test="orderList!=null">
+			<foreach collection="orderList" item="orderList" index="idx">
+				<if test="orderList.prod_no!=null">
+					INTO OR_PLIST (
+						ORP_NO, PROD_NO, OR_NO, ORP_QTY, ORP_PRICE
+					) VALUES (
+						#{orderList.orp_no, jdbcType=NUMERIC}, #{orderList.prod_no, jdbcType=CHAR},
+						#{or_no, jdbcType=NUMERIC}, #{orderList.orp_qty, jdbcType=NUMERIC}, #{orderList.orp_price, jdbcType=NUMERIC}
+					)
+				</if>
+			</foreach>
+			</if>
+		SELECT * FROM DUAL
+	</insert>
+	
+	<resultMap type="vo.order.OrderVO" id="orMap" autoMapping="true">
+		<id property="or_no" column="OR_NO" />
+		<collection property="orderList" javaType="java.util.List" ofType="vo.order.OrderListVO" autoMapping="true">
+			<collection property="prodList" javaType="java.util.List" ofType="vo.wareHouse.ProdVO" autoMapping="true"/>
+		</collection>
+	</resultMap>
+	
+	<select id="selectOrder" parameterType="int" resultMap="orMap">
+		SELECT 
+				X.OR_NO, X.BUYER_NO, X.EMP_NO, X.EST_NO, TO_CHAR(X.OR_DATE,'YYYY-MM-DD') OR_DATE,
+			    TO_CHAR(X.OR_REQ_DATE, 'YYYY-MM-DD') OR_REQ_DATE, X.OR_STATUS,
+		        Y.PROD_NO, Y.PROD_NAME, Y.PROD_STANDARD, Y.PROD_STAND_SIZE, Y.PROD_OUT_PRICE, Y.PROD_VALIDITY,
+		        Z.ORP_NO, Z.ORP_QTY, U.BUYER_NAME, T.EMP_NAME
+		FROM OR_PLIST Z INNER JOIN PROD Y ON (Z.PROD_NO = Y.PROD_NO)
+		                INNER JOIN ORDERP X ON (Z.OR_NO = X.OR_NO)
+		                LEFT OUTER JOIN (
+		                    SELECT DISTINCT W.BUYER_NO, W.BUYER_NAME, X.OR_NO
+		                    FROM ORDERP X INNER JOIN BUYER W ON (X.BUYER_NO = W.BUYER_NO)
+		                ) U ON (Z.OR_NO = U.OR_NO)
+		                LEFT OUTER JOIN (
+		                    SELECT DISTINCT V.EMP_NO, V.EMP_NAME, X.OR_NO
+		                    FROM ORDERP X INNER JOIN EMPLOYEE V ON (X.EMP_NO = V.EMP_NO)
+		                ) T ON (Z.OR_NO = T.OR_NO)
+		         <if test="est_no!=null">
+		WHERE X.OR_NO = #{est_no}
+		         </if>
+	</select>
+	
+	<select id="selectOrderCount" parameterType="vo.PagingVO" resultType="int">
+		SELECT COUNT(*)
+		<include refid="searchFlag"/>
+	</select>
+	
+	<select id="selectOrderList" parameterType="vo.PagingVO" resultMap="orMap">
+<!-- 		SELECT T.* -->
+<!-- 		FROM ( -->
+			SELECT ROWNUM RNUM, A.OR_NO, B.EMP_NO, B.EMP_NAME, A.EST_NO,
+				  C.BUYER_NO, C.BUYER_NAME, A.OR_DATE , TO_CHAR(A.OR_REQ_DATE,'YYYY-MM-DD') OR_REQ_DATE, A.OR_STATUS,
+				  D.PROD_NO, D.ORP_QTY, D.ORP_PRICE
+			<include refid="searchFlag"/>
+<!-- 		FROM ORDERP A INNER JOIN EMPLOYEE B ON (A.EMP_NO = B.EMP_NO) -->
+<!-- 					  INNER JOIN BUYER C ON (A.BUYER_NO = C.BUYER_NO) -->
+<!-- 					  INNER JOIN OR_PLIST D ON (A.OR_NO = D.OR_NO) -->
+			ORDER BY A.OR_NO DESC
+<!-- 		) T -->
+<!-- 		WHERE RNUM BETWEEN #{startRow} AND #{endRow} -->
+	</select>
+
+	<update id="updateOrder" parameterType="vo.order.OrderVO">
+		UPDATE ORDERP
+		SET 
+			BUYER_NO = #{buyer_no, jdbcType=CHAR},
+			EMP_NO = #{emp_no, jdbcType=CHAR},
+			EST_NO = #{est_no, jdbcType=CHAR},
+			OR_DATE = NVL(DECODE(#{or_date}.'',SYSDATE,#{or_date}), SYSDATE),
+			OR_REQ_DATE = NVL(DECODE(#{or_req_date},'',SYSDATE+7,#{or_req_date}), SYSDATE+7),
+			OR_STATUS = 'OR01'
+		WHERE
+			OR_NO = #{or_no}
+	</update>
+	
+	<update id="updateOrList" parameterType="vo.order.OrderListVO">
+	MERGE INTO OR_PLIST
+	USING DUAL
+		ON (OR_NO = #{or_no})
+	WHEN MATCHED THEN
+		UPDATE SET PROD_NO = #{prod_no, jdbcType=CHAR}, ORP_QTY = #{orp_qty, jdbcType=NUMERIC}, 
+		ORP_PRICE = #{orp_price, jdbcType=NUMERIC} 
+	</update>
+	
+	<update id="deleteOrder" parameterType="int">
+	UPDATE ORDERP
+	SET
+      OR_STATUS = 'OR99'
+	WHERE
+	    OR_NO = #{or_no}	
+	</update>
+	
+</mapper>

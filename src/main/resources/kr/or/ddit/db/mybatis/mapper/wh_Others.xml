@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.wareHouse.IWareOthersDAO">
+
+<!-- rule mat 정책코드 -->
+	<select id="selectMatRuleList" resultType="vo.RuleVO">
+		select CODE, NAME from rule WHERE CODE = 'G001' OR CODE = 'G002'
+	</select>
+	
+<!-- rule prod 정책코드 -->
+	<select id="selectProdRuleList" resultType="vo.RuleVO">
+		select CODE, NAME from rule WHERE CODE = 'G003' OR CODE = 'G004'
+	</select>
+
+<!-- lprod 카테고리 분류 -->
+	<select id="selectLprodList" resultType="LprodVO">
+		SELECT LPROD_NAME, LPROD_NO FROM LPROD
+	</select>
+
+<!-- 공장 -->
+	<select id="selectStoreList" resultType="WareHouseVO">
+		SELECT STORE_NO, LSTORE_NO, STORE_NAME, STORE_DEF, USE_STATUS FROM STORE
+	</select>
+	
+<!-- 공장의 구역 -->
+	<select id="selectSectorList" resultType="WareSectorVO" parameterType="String">
+		SELECT SECTOR_NO, STORE_NO FROM SECTOR 
+		<where>
+			<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(store_no)">
+				STORE_NO = #{store_no}
+			</if>
+		</where>
+	</select>
+	
+<!-- 원자재 출고할때 창고 선택  -->
+	<select id="outerStoreList" resultType="OuterStoreVO" parameterType="string">
+		SELECT A.MAT_NO, A.MAT_NAME, A.MAT_STOCK, C.STORE_NO, C.STORE_NAME
+		FROM MATERIAL A INNER JOIN MAT_SECTOR B ON(A.MAT_NO = B.MAT_NO)
+			LEFT OUTER JOIN SECTOR Z ON(B.SECTOR_NO = Z.SECTOR_NO)
+			LEFT OUTER JOIN STORE C ON(Z.STORE_NO = C.STORE_NO)
+		WHERE A.MAT_NO LIKE #{mat_no}
+	</select>
+	
+<!-- 원자재 출고할때 창고 선택하고 sector선택 하기  -->
+	<select id="outerSectorList" resultType="OuterStoreVO" parameterType="OuterStoreVO">
+		SELECT A.MAT_NO, A.MAT_NAME, A.MAT_STOCK, B.SECTOR_NO, B.MAT_CNT
+		FROM MATERIAL A INNER JOIN MAT_SECTOR B ON(A.MAT_NO = B.MAT_NO)
+			LEFT OUTER JOIN SECTOR Z ON(B.SECTOR_NO = Z.SECTOR_NO)
+		WHERE Z.STORE_NO LIKE #{store_no} AND A.MAT_NO LIKE #{mat_no} 
+	</select>
+	
+	<!-- 상품 출고할때 창고 선택 -->
+	<select id="outerPStroeList" resultType="OuterStoreVO" parameterType="string">
+		SELECT A.PROD_NO, A.PROD_NAME, A.PROD_STOCK, B.PROD_CNT ,C.SECTOR_NO , D.STORE_NO
+		FROM PROD A LEFT OUTER JOIN PROD_SECTOR B ON (A.PROD_NO=B.PROD_NO)
+		    LEFT OUTER JOIN SECTOR C ON(B.SECTOR_NO = C.SECTOR_NO)
+		    LEFT OUTER JOIN STORE D ON (C.STORE_NO=D.STORE_NO)
+		WHERE A.PROD_NO LIKE #{prod_no}
+	</select>
+	
+	<!-- 상품 출고할때 창고 선택하고 sector선택하기  -->
+	<select id="outerPSectorList" resultType="OuterStoreVO" parameterType="OuterStoreVO">
+		SELECT A.PROD_NO, A.PROD_NAME, A.PROD_STOCK, B.PROD_CNT ,C.SECTOR_NO , D.STORE_NO
+		FROM PROD A LEFT OUTER JOIN PROD_SECTOR B ON (A.PROD_NO=B.PROD_NO)
+	    	LEFT OUTER JOIN SECTOR C ON(B.SECTOR_NO = C.SECTOR_NO)
+	    	LEFT OUTER JOIN STORE D ON (C.STORE_NO=D.STORE_NO)
+		WHERE D.STORE_NO LIKE #{store_no} AND A.PROD_NO LIKE #{prod_no}
+	</select>
+</mapper>

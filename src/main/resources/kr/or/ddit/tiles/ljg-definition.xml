@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" "http://tiles.apache.org/dtds/tiles-config_3_0.dtd" >
+<tiles-definitions>
+  <definition name="parent" template="/WEB-INF/views/layout.jsp">
+  	<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+  	<put-attribute name="leftMenu" value="/includee/or_leftMenu.jsp" />
+  </definition>
+  <definition name="index" extends="parent">
+  	<put-attribute name="contents" value="/WEB-INF/views/index.jsp" />
+  </definition>
+  <definition name="orderparent" template="/WEB-INF/views/layout.jsp">
+  	<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+  	<put-attribute name="leftMenu" value="/includee/or_leftMenu.jsp" />
+  </definition>
+  <definition name="order/*/*" extends="orderparent">
+  	<put-attribute name="contents" value="/WEB-INF/views/order/{1}/{2}.jsp" />
+  </definition>
+</tiles-definitions>

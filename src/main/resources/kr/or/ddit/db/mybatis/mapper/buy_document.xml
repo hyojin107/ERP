@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--  [[개정이력(Modification Information)]]       -->
+<!--  	수정일      		수정자  		 수정내용               	-->
+<!--  ==========   ======    ==============     -->
+<!--  2020. 7. 2        송효진    		 최초작성              	-->
+<!--  Copyright (c) 2020 by DDIT All right reserved -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.buy.IBuy_DocDAO">
+	
+	<!-- 구매요청서 등록 -->
+	<insert id="insertBuyDoc" parameterType="Buy_DocumentVO">
+		<selectKey resultType="int" keyProperty="buy_no" order="BEFORE">
+			SELECT NVL(MAX(BUY_NO), 0)+1 FROM BUY_DOCUMENT
+		</selectKey>
+		INSERT ALL
+		INTO BUY_DOCUMENT(
+			BUY_NO, EMP_NO, DOC_DATE, DOC_INDATE
+		) VALUES(
+			#{buy_no}, #{emp_no}, sysdate, #{doc_inDate, jdbcType=DATE}
+		)
+		<foreach collection="matList" item="mat" index="idx">
+			INTO BUY_DOC_MAT(
+				MAT_NO, BUY_NO, QTY, DOC_STATUS
+			) VALUES(
+				#{mat.mat_no}, #{buy_no}, #{mat.qty}, 'Q001'
+			)
+		</foreach>
+		SELECT * FROM DUAL
+	</insert>
+	
+	<!-- 검색 -->
+	<sql id="searchFrag">
+		FROM BUY_DOCUMENT D LEFT OUTER JOIN BUY_DOC_MAT DM ON(D.BUY_NO = DM.BUY_NO)
+                    LEFT OUTER JOIN EMPLOYEE E ON(D.EMP_NO = E.EMP_NO)
+                    LEFT OUTER JOIN DEPARTMENT DP ON (DP.DEP_NO = E.DEP_NO)
+                    LEFT OUTER JOIN MATERIAL M ON(M.MAT_NO = DM.MAT_NO)
+                    LEFT OUTER JOIN LPROD LP ON (LP.LPROD_NO = M.LPROD_NO)
+                    LEFT OUTER JOIN (SELECT D.BUY_NO, COUNT(DM.MAT_NO) MATCNT
+                                     FROM BUY_DOCUMENT D INNER JOIN BUY_DOC_MAT DM ON(D.BUY_NO=DM.BUY_NO) 
+                                     GROUP BY D.BUY_NO) A ON(A.BUY_NO = D.BUY_NO)
+		<trim prefix=" WHERE " prefixOverrides="AND">
+			<if test="detailSearch!=null">
+				<if test="'Q001'.equals(detailSearch.status)">	<!-- 구매 진행중 -->
+					DM.DOC_STATUS LIKE 'Q001'
+				</if>
+				<if test="'Q002'.equals(detailSearch.status)">	<!-- 발주 완료 -->
+					DM.DOC_STATUS LIKE 'Q002'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.doc_date)">
+					D.DOC_DATE >= TO_DATE(#{detailSearch.doc_date}) 
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.doc_dateEnd)">
+					<![CDATA[
+					AND	D.DOC_DATE < TO_DATE(#{detailSearch.doc_dateEnd})+1
+					]]>
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.emp_no)">
+					AND E.EMP_NO = #{detailSearch.emp_no}
+				</if>				
+			</if>
+		</trim> 
+	</sql>
+	<select id="selectBuyDocCount" parameterType="pagingVO" resultType="int">
+		SELECT COUNT(*)
+	    <include refid="searchFrag"/>
+	</select>
+	<!-- 구매요청서 리스트 -->
+	<resultMap type="Buy_DocumentVO" id="docMap" autoMapping="true">
+		<id property="buy_no" column="BUY_NO"/>
+		<collection property="matList" javaType="java.util.List" ofType="Buy_Doc_MatVO" autoMapping="true">
+			<association property="matVO" javaType="MaterialVO" autoMapping="true">
+				<association property="lprodVO" javaType="LprodVO" autoMapping="true"/>
+			</association>
+		</collection>
+	</resultMap>
+	<select id="selectBuyDocList" parameterType="PagingVO" resultMap="docMap">
+		SELECT A.*
+		FROM(
+			SELECT ROWNUM RNUM, D.BUY_NO, DM.DOC_STATUS, E.EMP_NO, E.EMP_NAME, DP.DEP_NAME
+					, TO_CHAR(D.DOC_DATE,'YYYY-MM-DD') DOC_DATE, TO_CHAR(D.DOC_INDATE,'YYYY-MM-DD') DOC_INDATE
+					, DM.MAT_NO, A.MATCNT, M.MAT_NAME, LP.LPROD_NAME, DM.QTY, MAT_STANDARD, MAT_STAND_SIZE
+			<include refid="searchFrag" />
+			ORDER BY BUY_NO DESC
+		) A
+		WHERE BUY_NO BETWEEN #{startRow} AND #{endRow}
+	</select>
+	
+	
+	<!-- 구매요청서 삭제 - 구매원자재목록 종속삭제 -->
+	<delete id="deleteDoc" parameterType="vo.buy.Buy_DocumentVO">
+		DELETE FROM BUY_DOCUMENT
+		WHERE BUY_NO IN(
+			<foreach collection="buy_noList" item="buyNo" separator=",">
+				#{buyNo}
+			</foreach>
+		)
+	</delete>
+	
+</mapper>
+

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" "http://tiles.apache.org/dtds/tiles-config_3_0.dtd" >
+<tiles-definitions>
+  <definition name="parent" template="/WEB-INF/views/layout.jsp">
+  	<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+  	<put-attribute name="leftMenu" value="/includee/leftMenu.jsp" />
+  </definition>
+  <definition name="index" extends="parent">
+  	<put-attribute name="content" value="/WEB-INF/views/index.jsp"></put-attribute>
+	<put-attribute name="contents" value="/includee/contents.jsp"></put-attribute> 
+  </definition>
+  <definition name="log" template="/loginForm/login.jsp">
+  </definition>
+  <definition name="buyParent" template="/WEB-INF/views/layout.jsp">
+  	<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+  	<put-attribute name="leftMenu" value="/WEB-INF/views/buy/buyLeftMenu.jsp"></put-attribute>
+  </definition>
+  <definition name="buy/*/*" extends="buyParent">
+  	<put-attribute name="contents" value="/WEB-INF/views/buy/{1}/{2}.jsp"></put-attribute>
+  </definition>  
+  <definition name="*" extends="buyParent">
+  	<put-attribute name="contents" value="/WEB-INF/views/{1}.jsp"></put-attribute>
+  </definition>  
+</tiles-definitions>

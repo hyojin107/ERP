@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.account.IChitDAO">
+<!-- SELECT LAST_DAY(to_date(200501, 'YYYYMM')) FROM DUAL; -->
+<update id="updateChit">
+	<choose>
+		<when test="chit_no.charAt(0)=='B'">
+			UPDATE BUYCHIT
+		    SET
+			    SIGN_STATUS = #{sign_status}
+		     WHERE
+		     	BUY_CHIT_NO = #{chit_no}
+		</when>
+		<when test="chit_no.charAt(0)=='S'">
+			UPDATE SELLCHIT
+		    SET
+			    SIGN_STATUS = #{sign_status}
+		     WHERE
+		     	SELL_CHIT_NO = #{chit_no}
+		</when>
+		<otherwise>
+			UPDATE CHIT
+		    SET
+			    SIGN_STATUS = #{sign_status}
+		     WHERE
+		     	CHIT_NO = #{chit_no}
+		</otherwise>
+	</choose>
+</update>
+<!-- <resultMap type="ChitVO" id="selchit" autoMapping="true"> -->
+<!-- 	<id property="chit_no" column="CHIT_NO" /> -->
+<!-- 	<collection property="chitList" autoMapping="true" javaType="java.util.List" ofType="ChitlistVO"/> -->
+<!-- </resultMap> -->
+<!-- <select id="selectChit" parameterType="ChitVO" resultMap="selchit"> -->
+<!-- 	<choose> -->
+<!-- 		<when test="chit_no.charAt(0)=='B'"> -->
+<!-- 			SELECT A.BUY_CHIT_NO CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD') CHIT_DATE, '매입' BUY_SELL, D.BUYER_NAME, F.ITEM_NAME||G.MAT_NAME PRODUCT, -->
+<!-- 			        NVL(F.ITEM_QTY,0)+NVL(E.ORMAT_QTY,0) QTY, NVL(ITEM_COST,0)+NVL(E.COST,0) PRICE, -->
+<!-- 			        ORMAT_CODE||ITEM_NO DEAL_NO, -->
+<!-- 			        I.DEP_NAME DEP_NO, J.NAME SIGN_STATUS, SUM((NVL(F.ITEM_QTY,0)+NVL(E.ORMAT_QTY,0))*(NVL(ITEM_COST,0)+NVL(E.COST,0))) PAY -->
+<!-- 			FROM BUYCHIT A LEFT OUTER JOIN BUY_PURCHASE B ON (A.PUR_CODE=B.PUR_CODE) -->
+<!-- 			    LEFT OUTER JOIN BUY_ORDER C ON(B.OR_CODE=C.OR_CODE) -->
+<!-- 			    LEFT OUTER JOIN BUYER D ON(C.BUYER_NO=D.BUYER_NO) -->
+<!-- 			    LEFT OUTER JOIN BUY_OR_MAT E ON (E.OR_CODE=C.OR_CODE) -->
+<!-- 			    LEFT OUTER JOIN BUY_ITEM F ON (F.OR_CODE=C.OR_CODE) -->
+<!-- 			    LEFT OUTER JOIN MATERIAL G ON (G.MAT_NO=E.MAT_NO) -->
+<!-- 			    LEFT OUTER JOIN EMPLOYEE H ON (H.EMP_NO=C.EMP_NO) -->
+<!-- 			    LEFT OUTER JOIN DEPARTMENT I ON (I.DEP_NO=H.DEP_NO) -->
+<!-- 			    INNER JOIN RULE J ON (J.CODE = A.SIGN_STATUS) -->
+<!-- 			WHERE A.BUY_CHIT_NO = #{chit_no} -->
+<!-- 			GROUP BY A.BUY_CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD'), '매입', D.BUYER_NAME, F.ITEM_NAME||G.MAT_NAME,  -->
+<!-- 					NVL(F.ITEM_QTY,0)+NVL(E.ORMAT_QTY,0), NVL(ITEM_COST,0)+NVL(E.COST,0), ORMAT_CODE||ITEM_NO, I.DEP_NAME, J.NAME -->
+<!-- 		</when> -->
+<!-- 		<when test="chit_no.charAt(0)=='S'"> -->
+<!-- 			SELECT A.SELL_CHIT_NO CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD') CHIT_DATE, '매출' BUY_SELL, E.BUYER_NAME, G.PROD_NAME PRODUCT, -->
+<!-- 			        NVL(ORP_QTY,0) QTY, NVL(ORP_PRICE,0) PRICE, ORP_NO DEAL_NO, -->
+<!-- 			        I.DEP_NAME DEP_NO, J.NAME SIGN_STATUS, SUM(NVL(ORP_QTY,0)*NVL(ORP_PRICE,0)) PAY -->
+<!-- 			FROM SELLCHIT A LEFT OUTER JOIN OR_SHIPMENT B ON (A.SHIP_NO=B.SHIP_NO) -->
+<!-- 			    LEFT OUTER JOIN OR_DELIVERY C ON(B.DELIV_NO=C.DELIV_NO) -->
+<!-- 			    LEFT OUTER JOIN ORDERP D ON(C.OR_NO=D.OR_NO) -->
+<!-- 			    LEFT OUTER JOIN BUYER E ON (E.BUYER_NO=D.BUYER_NO) -->
+<!-- 			    LEFT OUTER JOIN OR_PLIST F ON (F.OR_NO=D.OR_NO) -->
+<!-- 			    LEFT OUTER JOIN PROD G ON (G.PROD_NO=F.PROD_NO) -->
+<!-- 			    LEFT OUTER JOIN EMPLOYEE H ON (H.EMP_NO=D.EMP_NO) -->
+<!-- 			    LEFT OUTER JOIN DEPARTMENT I ON (I.DEP_NO=H.DEP_NO) -->
+<!-- 			    INNER JOIN RULE J ON (J.CODE = A.SIGN_STATUS) -->
+<!-- 			WHERE A.SELL_CHIT_NO = #{chit_no}  -->
+<!-- 			GROUP BY A.SELL_CHIT_NO, A.CHIT_DATE, '매출', E.BUYER_NAME, G.PROD_NAME,  -->
+<!-- 			NVL(ORP_QTY,0), NVL(ORP_PRICE,0), ORP_NO, I.DEP_NAME, J.NAME -->
+<!-- 		</when> -->
+<!-- 		<otherwise> -->
+<!-- 			SELECT A.CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD') CHIT_DATE, A.BUY_SELL, B.BUYER_NAME,  -->
+<!-- 			C.DEAL_NO, C.PRODUCT, C.QTY, C.PRICE, C.SUMMARY, D.DEP_NAME DEP_NO,  -->
+<!-- 			E.NAME SIGN_STATUS, -->
+<!-- 					SUM(NVL(C.QTY,0)*NVL(C.PRICE,0)) PAY -->
+<!-- 			FROM CHIT A LEFT OUTER JOIN BUYER B ON (A.BUYER_NO=B.BUYER_NO) -->
+<!-- 			            LEFT OUTER JOIN CHITLIST C ON (A.CHIT_NO=C.CHIT_NO) -->
+<!-- 			            LEFT OUTER JOIN DEPARTMENT D ON (A.DEP_NO = D.DEP_NO) -->
+<!-- 			            INNER JOIN RULE E ON (E.CODE = A.SIGN_STATUS) -->
+<!-- 			WHERE A.CHIT_NO = #{chit_no,jdbcType=CHAR} -->
+<!-- 			GROUP BY A.CHIT_NO, A.CHIT_DATE, A.BUY_SELL, B.BUYER_NAME, C.DEAL_NO, C.PRODUCT, C.QTY,  -->
+<!-- 			C.PRICE, C.SUMMARY, D.DEP_NAME, E.NAME -->
+<!-- 		</otherwise> -->
+<!-- 	</choose> -->
+<!-- </select> -->
+	<insert id="insertChit" parameterType="ChitVO">
+		<selectKey keyProperty="chit_no" order="BEFORE" resultType="string">
+			SELECT LPAD(NVL(MAX(CHIT_NO), 0) + 1,10,'	0') FROM CHIT
+		</selectKey>
+		INSERT ALL 
+		INTO CHIT (
+		    CHIT_NO,		    BUYER_NO,		    DEP_NO,		    EMP_NO,
+		    CHIT_DATE,		    BUY_SELL,		    SIGN_STATUS
+		) VALUES (
+		    #{chit_no,    jdbcType=CHAR},		    #{buyer_no,   jdbcType=CHAR},
+		    #{dep_no,     jdbcType=CHAR},		    #{emp_no,     jdbcType=CHAR},
+		    #{chit_date,  jdbcType=DATE},		    #{buy_sell,   jdbcType=VARCHAR},
+		    #{sign_status,jdbcType=VARCHAR}
+		)
+		<if test="chitList!=null">
+			<foreach collection="chitList" item="list" index="idx">
+				INTO CHITLIST(
+					DEAL_NO,				    CHIT_NO,				    PRODUCT,
+				    PRICE,				    SUMMARY,				    QTY
+				) VALUES(
+				(SELECT NVL(MAX(DEAL_NO),0)+1+#{idx} FROM CHITLIST),			    #{chit_no},			    #{list.product},
+			    #{list.price  },			    #{list.summary},			    #{list.qty    }
+				)
+			</foreach>
+		</if>
+		SELECT * FROM DUAL
+	</insert>
+<!-- 	<select id="selectAllChitCount" parameterType="PagingVO" resultType="int"> -->
+<!-- 		SELECT COUNT(NVL(A.CHIT_NO,'') || NVL(B.BUY_CHIT_NO,'') || NVL(C.SELL_CHIT_NO,''))  -->
+<!-- 		<include refid="searchDetail" /> -->
+<!-- 	</select> -->
+	<resultMap type="ChitVO" id="chitlist" autoMapping="true">
+		<id property="chit_no" column="CHIT_NO"/>
+		<collection property="chitList" autoMapping="true" javaType="java.util.List" ofType="ChitlistVO">
+		</collection>
+	</resultMap>
+	
+<!-- 	<select id="selectAllChitList" parameterType="PagingVO" resultMap="chitlist"> -->
+<!-- 		SELECT DISTINCT <![CDATA['<input type="checkbox" class="area">']]> BUYER_NO,  -->
+<!-- 			NVL(A.CHIT_NO,'') || NVL(B.BUY_CHIT_NO,'') || NVL(C.SELL_CHIT_NO,'') CHIT_NO, -->
+<!--     		NVL(A.CHIT_DATE,'') || NVL(B.CHIT_DATE,'') || NVL(C.CHIT_DATE,'') CHIT_DATE, -->
+<!-- 		    NVL(A.BUY_SELL,'') || DECODE(B.BUY_CHIT_NO, NULL, '', '매입') || DECODE(C.SELL_CHIT_NO, NULL, '', '매출') BUY_SELL, -->
+<!-- 		    NVL(I.BUYER_NAME,'') || NVL(J.BUYER_NAME,'') || NVL(K.BUYER_NAME,'') BUYER_NAME, -->
+<!-- 		    DECODE(NVL(A.SIGN_STATUS,'') || NVL(B.SIGN_STATUS,'') || NVL(C.SIGN_STATUS,''),'L001','요청중','승인') SIGN_STATUS, -->
+<!-- 		    SUM(NVL(O.ORP_QTY*O.ORP_PRICE,0) + NVL(Q.ITEM_QTY * Q.ITEM_COST,0) + NVL(M.COST*M.ORMAT_QTY,0) + NVL(L.PRICE * L.QTY,0)) PAY, -->
+<!-- 		    NVL(L.PRODUCT,'')||NVL(P.MAT_NAME,'')||NVL(Q.ITEM_NAME,'')||NVL(R.PROD_NAME,'') PRODUCT, -->
+<!-- 		    NVL(L.PRICE,'')||NVL(Q.ITEM_COST,'')||NVL(O.ORP_PRICE,'')||NVL(M.COST,'') PRICE, -->
+<!-- 		    NVL(L.QTY,'')||NVL(O.ORP_QTY,'')||NVL(Q.ITEM_QTY,'')||NVL(M.ORMAT_QTY,'') QTY, -->
+<!-- 		    NVL(L.SUMMARY,'') SUMMARY -->
+    		
+<!--     		<include refid="searchDetail"/> -->
+    		
+<!--     		GROUP BY <![CDATA['<input type="checkbox" class="area">']]>, -->
+<!--     				NVL(A.CHIT_NO,'') || NVL(B.BUY_CHIT_NO,'') || NVL(C.SELL_CHIT_NO,''), -->
+<!--     				NVL(A.CHIT_DATE,'') || NVL(B.CHIT_DATE,'') || NVL(C.CHIT_DATE,''), -->
+<!--     				NVL(A.BUY_SELL,'') || DECODE(B.BUY_CHIT_NO, NULL, '', '매입') || DECODE(C.SELL_CHIT_NO, NULL, '', '매출'), -->
+<!--     				NVL(I.BUYER_NAME,'') || NVL(J.BUYER_NAME,'') || NVL(K.BUYER_NAME,''), -->
+<!--     				NVL(A.SIGN_STATUS,'') || NVL(B.SIGN_STATUS,'') || NVL(C.SIGN_STATUS,''), -->
+<!--     				NVL(L.PRODUCT,'')||NVL(P.MAT_NAME,'')||NVL(Q.ITEM_NAME,'')||NVL(R.PROD_NAME,''), -->
+<!-- 				    NVL(L.PRICE,'')||NVL(Q.ITEM_COST,'')||NVL(O.ORP_PRICE,'')||NVL(M.COST,''), -->
+<!-- 				    NVL(L.QTY,'')||NVL(O.ORP_QTY,'')||NVL(Q.ITEM_QTY,'')||NVL(M.ORMAT_QTY,''), -->
+<!-- 				    NVL(L.SUMMARY,'') -->
+<!--     		ORDER BY CHIT_DATE DESC ,SIGN_STATUS  -->
+<!-- 	</select> -->
+<select id="selectAllChitList" parameterType="ChitVO" resultMap="chitlist">
+	SELECT <![CDATA['<input type="checkbox" class="area">']]> BUYER_NO, A.* 
+	FROM(
+	SELECT A.*, B.PRODUCT, B.PRICE, B.QTY, B.SUMMARY
+    FROM(
+        SELECT A.CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD') CHIT_DATE, A.BUY_SELL, 
+        		C.NAME SIGN_STATUS, NVL(SUM(B.QTY*B.PRICE),0) PAY, D.BUYER_NAME
+        FROM CHIT A LEFT OUTER JOIN CHITLIST B ON (A.CHIT_NO = B.CHIT_NO)
+                    LEFT OUTER JOIN RULE C ON (C.CODE=A.SIGN_STATUS)
+                    LEFT OUTER JOIN BUYER D ON (A.BUYER_NO=D.BUYER_NO)
+        GROUP BY A.CHIT_NO, A.CHIT_DATE, A.BUY_SELL, C.NAME, D.BUYER_NAME) A LEFT OUTER JOIN CHITLIST B ON (A.CHIT_NO = B.CHIT_NO)
+    
+    
+    UNION
+    
+    SELECT A.BUY_CHIT_NO CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD') CHIT_DATE, 
+    		'매입' BUY_SELL, G.NAME SIGN_STATUS, NVL(E.PRICE,0)+NVL(F.PRICE,0) PAY,
+           D.BUYER_NAME, H.PRODUCT, H.COST PRICE, H.QTY, H.SUMMARY
+    FROM BUYCHIT A INNER JOIN BUY_PURCHASE B ON (B.PUR_CODE = A.PUR_CODE)
+                   INNER JOIN BUY_ORDER C ON (B.OR_CODE = C.OR_CODE)
+                   LEFT OUTER JOIN BUYER D ON (D.BUYER_NO = C.BUYER_NO)
+                   LEFT OUTER JOIN (
+                       SELECT OR_CODE, NVL(SUM(ORMAT_QTY*COST),0) PRICE
+                       FROM BUY_OR_MAT 
+                       GROUP BY OR_CODE) E ON (E.OR_CODE = C.OR_CODE)
+                   LEFT OUTER JOIN (
+                       SELECT OR_CODE, NVL(SUM(ITEM_QTY*ITEM_COST),0) PRICE
+                       FROM BUY_ITEM 
+                       GROUP BY OR_CODE) F ON (F.OR_CODE = C.OR_CODE)
+                   LEFT OUTER JOIN RULE G ON (G.CODE = A.SIGN_STATUS)
+                   LEFT OUTER JOIN (
+                       SELECT OR_CODE, B.MAT_NAME PRODUCT, A.ORMAT_QTY QTY, A.COST, '원자재매입' SUMMARY
+                       FROM BUY_OR_MAT A INNER JOIN MATERIAL B ON (A.MAT_NO=B.MAT_NO)
+                       UNION
+                       SELECT OR_CODE, ITEM_NAME PRODUCT, ITEM_QTY QTY, ITEM_COST COST, ITEM_LPROD SUMMARY
+                       FROM BUY_ITEM)H ON (H.OR_CODE = C.OR_CODE)
+                       
+        UNION
+        
+        SELECT A.CHIT_NO, TO_CHAR(A.CHIT_DATE,'YYYY-MM-DD') CHIT_DATE, A.BUY_SELL, A.SIGN_STATUS, A.PAY, A.BUYER_NAME, 
+                C.PROD_NAME PRODUCT, B.ORP_PRICE PRICE, B.ORP_QTY QTY, A.SUMMARY
+        FROM(
+            SELECT A.SELL_CHIT_NO CHIT_NO, A.CHIT_DATE, '매출' BUY_SELL, H.NAME SIGN_STATUS, A.SUMMARY,
+                    NVL(SUM(F.ORP_QTY*ORP_PRICE),0) PAY, E.BUYER_NAME, F.OR_NO
+            FROM SELLCHIT A LEFT OUTER JOIN OR_SHIPMENT B ON (A.SHIP_NO = B.SHIP_NO)
+                            LEFT OUTER JOIN OR_DELIVERY C ON (B.DELIV_NO = C.DELIV_NO)
+                            LEFT OUTER JOIN ORDERP D ON (C.OR_NO = D.OR_NO)
+                            LEFT OUTER JOIN BUYER E ON (D.BUYER_NO = E.BUYER_NO)
+                            LEFT OUTER JOIN OR_PLIST F ON (F.OR_NO = D.OR_NO)
+                            LEFT OUTER JOIN PROD G ON (G.PROD_NO = F.PROD_NO)
+                            LEFT OUTER JOIN RULE H ON (H.CODE = A.SIGN_STATUS)
+            GROUP BY A.SELL_CHIT_NO, A.CHIT_DATE, '매출', H.NAME, A.SUMMARY, E.BUYER_NAME, F.OR_NO) A
+            LEFT OUTER JOIN OR_PLIST B ON (A.OR_NO = B.OR_NO)
+            LEFT OUTER JOIN PROD C ON (C.PROD_NO = B.PROD_NO)) A
+        
+</select>
+<!-- 	<sql id="searchDetail"> -->
+<!-- 		FROM CHIT A FULL OUTER JOIN BUYCHIT B ON (0=1) -->
+<!-- 		FULL OUTER JOIN SELLCHIT C ON (1=0) -->
+<!-- 		LEFT OUTER JOIN BUY_PURCHASE D ON (B.PUR_CODE = D.PUR_CODE) -->
+<!-- 		LEFT OUTER JOIN BUY_ORDER E ON (D.OR_CODE = E.OR_CODE) -->
+<!-- 		LEFT OUTER JOIN OR_SHIPMENT F ON (C.SHIP_NO = F.SHIP_NO) -->
+<!-- 		LEFT OUTER JOIN OR_DELIVERY G ON (F.DELIV_NO = G.DELIV_NO) -->
+<!-- 		LEFT OUTER JOIN ORDERP H ON (G.OR_NO = H.OR_NO) -->
+<!-- 		LEFT OUTER JOIN BUYER I ON (A.BUYER_NO = I.BUYER_NO) -->
+<!-- 		LEFT OUTER JOIN BUYER J ON (E.BUYER_NO = J.BUYER_NO) -->
+<!-- 		LEFT OUTER JOIN BUYER K ON (H.BUYER_NO = K.BUYER_NO) -->
+<!-- 		LEFT OUTER JOIN CHITLIST L ON (A.CHIT_NO = L.CHIT_NO) -->
+<!-- 		LEFT OUTER JOIN BUY_OR_MAT M ON (M.OR_CODE = E.OR_CODE) -->
+<!-- 		LEFT OUTER JOIN OR_PLIST O ON (O.OR_NO = H.OR_NO) -->
+<!-- 		LEFT OUTER JOIN MATERIAL P ON (P.MAT_NO = M.MAT_NO) -->
+<!-- 		LEFT OUTER JOIN BUY_ITEM Q ON (Q.OR_CODE = E.OR_CODE) -->
+<!-- 		LEFT OUTER JOIN PROD R ON (R.PROD_NO = O.PROD_NO) -->
+		
+<!-- 	      <trim prefix=" WHERE " prefixOverrides="AND|OR"> -->
+<!-- 	         <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(chit_date)"> -->
+<!-- 	            (A.CHIT_DATE = #{detailSearch.chit_date} -->
+<!-- 	            OR B.CHIT_DATE = #{detailSearch.chit_date} -->
+<!-- 	            OR C.CHIT_DATE = #{detailSearch.chit_date}) -->
+<!-- 	         </if> -->
+<!-- 	         <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(buy_sell)"> -->
+<!-- 	            AND (A.BUY_SELL = #{detailSearch.buy_sell} -->
+<!-- 	            <if test="'매입'.equals(buy_sell)"> -->
+<!-- 	            OR B.BUY_CHIT_NO IS NOT NULL -->
+<!-- 	            </if> -->
+<!-- 	            <if test="'매출'.equals(buy_sell)"> -->
+<!-- 	            OR C.SELL_CHIT_NO IS NOT NULL -->
+<!-- 	            </if> -->
+<!-- 	            ) -->
+<!-- 	         </if> -->
+<!-- 	         <if   test="@org.apache.commons.lang3.StringUtils@isNotBlank(buyer_name)"> -->
+<!-- 	            AND (INSTR(I.BUYER_NAME, #{detailSearch.buyer_name,jdbcType=VARCHAR}) > 0 -->
+<!-- 	            OR INSTR(J.BUYER_NAME, #{detailSearch.buyer_name,jdbcType=VARCHAR}) > 0 -->
+<!-- 	            OR INSTR(K.BUYER_NAME, #{detailSearch.buyer_name,jdbcType=VARCHAR}) > 0) -->
+	            
+<!-- 	         </if> -->
+<!-- 	         <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(sign_status)"> -->
+<!-- 	         	<choose> -->
+<!-- 	         		<when test="'L001'.equals(sign_status)"> -->
+<!-- 	         			AND (A.SIGN_STATUS = 'L001' OR B.SIGN_STATUS='L001' OR C.SIGN_STATUS='L001') -->
+<!-- 	         		</when> -->
+<!-- 	         		<when test="'L002'.equals(sign_status)"> -->
+<!-- 	         			AND (A.SIGN_STATUS = 'L002' OR B.SIGN_STATUS='L002' OR C.SIGN_STATUS='L002') -->
+<!-- 	         		</when> -->
+<!-- 	         	</choose> -->
+<!-- 	         </if> -->
+<!--       </trim> -->
+<!-- 	</sql> -->
+	
+</mapper>

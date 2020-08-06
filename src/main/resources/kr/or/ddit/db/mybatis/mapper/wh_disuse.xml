@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.wareHouse.IDisuseDAO">
+
+
+
+<select id="pdReportCnt" resultType="int">
+
+SELECT COUNT(*) FROM(
+SELECT A.*, ROWNUM RNUM
+FROM(
+SELECT A.* FROM PROD_REPORT A LEFT OUTER JOIN MAT_DISPOSAL B ON(A.REP_NO = B.REP_NO) 
+<include refid="searchFrag"/>
+ORDER BY A.REP_DATE DESC
+) A) B
+
+</select>
+
+<sql id="searchFrag">
+<where>
+		
+			<if test="searchVO!=null and @org.apache.commons.lang3.StringUtils@isNotBlank(searchVO.searchWord)">
+				<choose>
+				<when test="'emp'.equals(searchVO.searchType) ">
+				AND D.EMP_NAME LIKE '%' || #{searchVO.searchWord} || '%'
+				</when>
+				<when test="'orderno'.equals(searchVO.searchType) ">
+				AND A.PORDER_NO LIKE '%' || #{searchVO.searchWord} || '%'
+				</when>
+				<otherwise>
+				AND D.EMP_NAME LIKE '%' || #{searchVO.searchWord} || '%' or
+				A.PORDER_NO LIKE '%' || #{searchVO.searchWord} || '%'
+				</otherwise>
+				</choose>
+				
+			</if>
+		</where>
+</sql>
+<sql id="searchDisuse">
+<where>
+		 C.EMP_NAME IS NOT NULL 
+		
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(dis_date) ">
+				AND TO_CHAR(A.DIS_DATE,'YYYY-MM-DD') LIKE '%' || #{dis_date} || '%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(emp_name)  ">
+				AND C.EMP_NAME LIKE '%' || #{emp_name} || '%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(sector_no)">
+				AND A.SECTOR_NO LIKE '%' || #{sector_no} || '%'
+				</if>
+				<if test="@org.apache.commons.lang3.StringUtils@isNotBlank(stuff_name)">
+				AND B.MAT_NAME LIKE '%' || #{stuff_name} || '%'
+				</if>
+		</where>
+</sql>
+
+
+<select id="readPdReportList" parameterType="PagingVO" resultType="PdReportVO">
+
+SELECT B.* FROM(
+SELECT A.*, ROWNUM RNUM
+FROM(
+SELECT A.* FROM PROD_REPORT A LEFT OUTER JOIN MAT_DISPOSAL B ON(A.REP_NO = B.REP_NO) 
+<include refid="searchFrag"/>
+ORDER BY A.REP_DATE DESC
+) A) B
+<![CDATA[
+		WHERE RNUM >= #{startRow} AND RNUM <= #{endRow}
+		]]>
+
+</select>
+
+<resultMap type="PdReportVO" id="pdreportMap" autoMapping="true">
+<id property="rep_no" column="PORDER_NO" />
+<collection property="meterial" javaType="java.util.List" ofType="MaterialVO" autoMapping="true" />
+</resultMap>
+
+<select id="readPdReport" parameterType="int" resultMap="pdreportMap">
+
+SELECT A.PORDER_NO,G.REP_DATE, C.EMP_NAME, F.PROD_NAME, B.PDUCT_CNT ,E.MAT_NAME, D.MAT_NO, D.MAT_NUMBER * G.PDUCT_DISCNT MAT_CNT
+FROM PDUCT_OR A INNER JOIN PDUCT_LIST B ON (A.PORDER_NO = B.PORDER_NO)
+INNER JOIN EMPLOYEE C ON (A.EMP_NO = C.EMP_NO)
+INNER JOIN BOM D ON (D.PROD_NO = B.PROD_NO)
+INNER JOIN PROD F ON (F.PROD_NO = B.PROD_NO)
+INNER JOIN MATERIAL E ON (E.MAT_NO = D.MAT_NO) 
+LEFT OUTER JOIN PROD_REPORT G ON (G.PORDER_NO = B.PORDER_NO)
+WHERE G.PORDER_NO = #{PORDER_NO}
+
+</select>
+
+
+<insert id="insertDisUse" parameterType="DisStuffVO">
+
+<if test="'WH01'.equals(Lware_no)">
+INSERT INTO
+PROD_DIS(PDIS_PROD, EMP_NO, PROD_NO, PDIS_DATE,PDIS_CNT,SECTOR_NO)
+SELECT PROD_DIS_SEQ.nextVal,
+A.* from(
+<foreach collection = "dislist" item="item" index = "index" separator="union all">
+SELECT 
+#{emp_no} as EMP_NO,
+#{item.stuff_no} as PROD_NO,
+sysdate as PDIS_DATE,
+#{item.stuff_cnt} as PDIS_CNT,
+#{item.sector_no} as SECTOR_NO
+from dual
+</foreach>
+ ) A
+</if>
+
+
+<if test="'WH02'.equals(Lware_no)">
+INSERT INTO
+MAT_DISPOSAL(DIS_MATER, EMP_NO, MAT_NO, DIS_DATE, DIS_CNT,SECTOR_NO)
+SELECT MAT_DIS_SEQ.nextVal,
+A.* from(
+<foreach collection = "dislist" item="item" index = "index" separator="union all">
+SELECT 
+#{emp_no} as EMP_NO,
+#{item.stuff_no} as MAT_NO,
+sysdate as DIS_DATE,
+#{item.stuff_cnt} as DIS_CNT,
+#{item.sector_no} as SECTOR_NO
+from dual
+</foreach>
+ ) A
+</if>
+</insert>
+
+
+<select id="readMatDisUseList" parameterType="StuffVO" resultType="StuffVO">
+
+SELECT C.EMP_NAME ,B.MAT_NAME stuff_name, A.SECTOR_NO sector_no,A.DIS_CNT stuff_cnt, B.MAT_STOCK_SIZE stuff_size , A.DIS_DATE
+FROM MAT_DISPOSAL A LEFT OUTER JOIN MATERIAL B ON (A.MAT_NO = B.MAT_NO)
+LEFT OUTER JOIN EMPLOYEE C ON (A.EMP_NO = C.EMP_NO)
+<include refid="searchDisuse"/> 
+</select>
+
+
+<select id="readProdDisUseList" parameterType="StuffVO" resultType="StuffVO">
+SELECT  C.EMP_NAME,B.PROD_NAME stuff_name, A.SECTOR_NO sector_no, A.PDIS_CNT stuff_cnt, B.PROD_STOCK_SIZE stuff_size, A.PDIS_DATE dis_date
+FROM PROD_DIS A LEFT OUTER JOIN PROD B ON (A.PROD_NO = B.PROD_NO)
+LEFT OUTER JOIN EMPLOYEE C ON (A.EMP_NO = C.EMP_NO)
+<include refid="searchDisuse"/> 
+</select>
+
+</mapper>

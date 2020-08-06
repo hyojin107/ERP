@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE tiles-definitions PUBLIC "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN" "http://tiles.apache.org/dtds/tiles-config_3_0.dtd" >
+<tiles-definitions> 
+ <definition name="parent" template="/WEB-INF/views/layout.jsp">
+  	<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+  	<put-attribute name="leftMenu" value="/WEB-INF/views/mypage/leftMenu.jsp" />
+  </definition>
+   <definition name="empParent" template="/WEB-INF/views/layout.jsp">
+  	<put-attribute name="topMenu" value="/includee/topMenu.jsp" />
+  	<put-attribute name="leftMenu" value="/WEB-INF/views/emp/empLeftMenu.jsp" />
+  </definition>
+  <definition name="emp/*" extends="empParent">
+  	<put-attribute name="contents" value="/WEB-INF/views/emp/{1}.jsp"></put-attribute>
+  </definition>
+   <definition name="mypage/*" extends="parent">
+  	<put-attribute name="contents" value="/WEB-INF/views/mypage/{1}.jsp"></put-attribute>
+  </definition>
+  
+   <definition name="loginForm/passWordSearch" template="/loginForm/passWordSearch.jsp"/>
+  
+    
+  
+ 
+  
+</tiles-definitions>

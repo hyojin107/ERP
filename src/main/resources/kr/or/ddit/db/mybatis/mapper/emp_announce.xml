@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.emp.IAnnouncementDAO">
+<sql id="searchFrag">
+         WHERE g.DEP_NO2 IS NOT NULL <!-- 부서가 NOT NULL이 아닐때 -->
+      <if test="detailSearch!=null">
+        <!--    <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.sal_date)">
+             AND c.SAL_DATE BETWEEN  TRUNC(to_date(#{detailSearch.sal_date}),'MM') AND LAST_DAY(to_date(#{detailSearch.sal_date}))날짜를 검색했을 때
+          </if> -->
+          <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no2)">
+               and g.dep_no2 = #{detailSearch.dep_no2}
+          </if>       
+          <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.dep_no)">
+               and g.dep_no = #{detailSearch.dep_no}
+          </if>       
+          <if test="@org.apache.commons.lang3.StringUtils@isNotBlank(detailSearch.ann_status)">
+               and a.ann_status = #{detailSearch.ann_status}
+          </if>       
+       </if>
+</sql>
+<!-- 인사발령 리스트  -->
+<select id="selectAnnouncementList"  resultType="EmployeeVO" parameterType="PagingVO">
+      select z.*
+       from (
+          select distinct ROWNUM rnum, a.today_ann ,a.emp_no, c.name, g.dep_name dep_no, b.emp_name, f.pos_name pos_no
+           			,decode(a.remark,'pos','직급이동', decode(a.remark,'depart','부서이동', a.remark)) remark ,
+                    a.ann_status, a.ann_no , h.pos_name , d.dep_name,  a.ann_date
+          	from announcement a inner join employee b on(a.emp_no = b.emp_no)
+                    inner join rule c on(a.ann_status = c.code)
+                    left outer join department d on(a.dep_no = d.dep_no)
+                    left outer join position h on(a.pos_no = h.pos_no)
+                    inner join department g on( b.dep_no = g.dep_no)
+                    inner join position f on (b.pos_no = f.pos_no)  
+                        <include refid="searchFrag"/>
+	      order by a.today_ann
+         ) z
+      where rnum between #{startRow} and #{endRow}
+   
+   
+   
+   </select>
+
+<select id="selectAnnCount"  parameterType="PagingVO" resultType="int">
+      select count(*)
+         from announcement a inner join employee b on(a.emp_no = b.emp_no)
+                    inner join rule c on(a.ann_status = c.code)
+                    left outer join department d on(a.dep_no = d.dep_no)
+                    left outer join position h on(a.pos_no = h.pos_no)
+                    inner join department g on( b.dep_no = g.dep_no)
+                    inner join position f on (b.pos_no = f.pos_no)  
+               <include refid="searchFrag"/>
+   
+</select>
+<!-- 인사발령 사원 등록 -->
+<insert id="insertAnnouncement" parameterType="AnnouncementVO">
+	<selectKey keyProperty="ann_no" resultType="int" order="BEFORE">
+		SELECT TO_NUMBER(NVL(MAX(ann_no),0))+1 FROM  Announcement
+	</selectKey>
+		 INSERT INTO Announcement (
+		    ANN_NO, POS_NO, DEP_NO, EMP_NO, ANN_DATE, REMARK, ANN_STATUS , TODAY_ANN , ST_BEFORE
+		 )values(
+		  #{ann_no}, #{pos_no,jdbcType=CHAR}, #{dep_no,jdbcType=CHAR}, #{emp_no,jdbcType=CHAR}, to_date(#{ann_date}, 'YYYY-MM-DD'), #{remark}, 
+		  'B001' , SYSDATE  , #{st_before,jdbcType=VARCHAR}
+		 )
+</insert>
+<!--  인사발령 사원 등록 -->
+<update id="updateAnnouncement" parameterType="AnnouncementVO">
+	update employee
+ 		set dep_no =
+ 		<choose>
+ 			<when  test="@org.apache.commons.lang3.StringUtils@isNotBlank(dep_no)">
+		 		#{dep_no}
+ 			</when>
+ 			<otherwise>
+ 				(SELECT DEP_NO FROM EMPLOYEE WHERE emp_no= #{emp_no,jdbcType=CHAR})
+ 			</otherwise>
+ 		</choose>
+ 		,pos_no = 
+ 		<choose>
+ 			<when test="@org.apache.commons.lang3.StringUtils@isNotBlank(pos_no)">
+		 		#{pos_no}
+ 			</when>
+ 			<otherwise>
+ 				(select pos_no from employee where emp_no=#{emp_no,jdbcType=CHAR})
+ 			</otherwise>
+ 		</choose>
+	 	where emp_no = #{emp_no}
+</update>
+
+
+<!--  행하나를 클릭 했을떄  사원의 변경정보 띄우는거 -->
+<select id="selectAnnouncement" resultType="EmployeeVO" parameterType="int">
+  select  a.emp_no, c.name, g.dep_name dep_no, b.emp_name, f.pos_name pos_no , a.today_ann, b.emp_img
+           			,decode(a.remark,'pos','직급이동', decode(a.remark,'depart','부서이동', a.remark)) remark 
+           			,a.ann_status, a.ann_no , h.pos_name , d.dep_name, to_char(a.ann_date,'YYYY-MM-DD') ann_date  
+    from announcement a inner join employee b on(a.emp_no = b.emp_no)
+                    inner join rule c on(a.ann_status = c.code)
+                    left outer join department d on(a.dep_no = d.dep_no)
+                    left outer join position h on(a.pos_no = h.pos_no)
+                    inner join department g on( b.dep_no = g.dep_no)
+                    inner join position f on (b.pos_no = f.pos_no)
+	where a.ann_no = #{ann_no,jdbcType=NUMERIC}
+</select>
+
+<update id="updateCheck" parameterType="AnnouncementVO">
+	 update announcement
+		set ann_status = #{ann_status}
+	 where ann_no = #{ann_no,jdbcType=NUMERIC}	
+</update>
+
+</mapper>

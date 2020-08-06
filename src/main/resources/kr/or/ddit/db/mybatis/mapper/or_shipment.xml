@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ERP.dao.order.IShipmentDAO">
+	
+	<!-- 출하 등록 -->
+	<insert id="insertShipment" parameterType="vo.order.ShipmentVO">
+		<selectKey resultType="int" keyProperty="ship_no" order="BEFORE">
+			SELECT NVL(MAX(SHIP_NO), 0)+1 FROM OR_SHIPMENT		
+		</selectKey>
+		INSERT INTO OR_SHIPMENT (
+		    SHIP_NO, DELIV_NO, EMP_NO, 
+		    SHIP_DATE, SHIP_P_DATE, SHIP_PROG
+		) VALUES (
+			#{ship_no, jdbcType=NUMERIC}, #{deliv_no, jdbcType=NUMERIC}, #{emp_no, jdbcType=CHAR},
+			NVL(DECODE(#{ship_date},'',SYSDATE,#{ship_date}), SYSDATE), NVL(DECODE(#{ship_p_date},'', SYSDATE, #{ship_p_date}), SYSDATE), 'OR01'
+		)
+	</insert>
+	
+	<!-- 출하 수정 -->
+	<update id="updateShipment" parameterType="vo.order.ShipmentVO">
+		UPDATE OR_SHIPMENT
+		SET 
+			EMP_NO = #{emp_no, jdbcType=CHAR},
+			SHIP_DATE = NVL(DECODE(#{ship_date}, '', SYSDATE, #{ship_date}), SYSDATE),
+			SHIP_P_DATE = NVL(DECODE(#{ship_p_date}, '', SYSDATE, #{ship_p_date}), SYSDATE),
+			SHIP_PROG = NVL(DECODE(#{ship_prog, jdbcType=CHAR},'', 'OR01', #{ship_prog, jdbcType=CHAR}), 'OR01')
+		WHERE SHIP_NO = #{ship_no}
+	</update>
+	
+	<!-- 출하서 삭제 -->
+	<delete id="deleteShipment" parameterType="int">
+		DELETE FROM OR_SHIPMENT
+		WHERE SHIP_NO = #{ship_no}
+	</delete>
+
+	<select id="exist">
+		SELECT COUNT (*)
+		FROM OR_DELIVERY
+		WHERE DELIV_NO = #{deliv_no, jdbcType=NUMERIC}
+	</select>
+	
+	
+	<!-- 미출하 현황 -->
+	<resultMap type="vo.order.DeliveryOrderVO" id="delivMap" autoMapping="true">
+		<id property="deliv_no" column="DELIV_NO" />
+		<collection property="order" javaType="java.util.List" ofType="vo.order.OrderVO" autoMapping="true">
+<!-- 			<association property="orderList" javaType="java.util.List" ofType="vo.order.OrderListVO"> -->
+			<collection property="orderList" javaType="java.util.List" ofType="vo.order.OrderListVO" autoMapping="true">
+				<collection property="prodList" javaType="java.util.List" ofType="vo.wareHouse.ProdVO" autoMapping="true"/>
+			</collection>
+		</collection>
+	</resultMap>
+	<select id="selectNoShipped" resultMap="delivMap">
+		SELECT A.*
+		FROM OR_DELIVERY A LEFT OUTER JOIN OR_SHIPMENT B ON (A.DELIV_NO = B.DELIV_NO)
+		WHERE B.DELIV_NO IS NULL
+	</select>
+	
+	
+	
+	
+	<!-- ........................................................................................... -->
+	
+	<!-- 출하서 조회 -->
+	<resultMap type="Or_ShipmentVO" id="shipMap" autoMapping="true">
+		<id property="ship_no" column="SHIP_NO"/>
+		<association property="deliveryVO" autoMapping="true"/>
+		<association property="orderpVO" autoMapping="true" javaType="OrderVO">
+			<collection property="orderList" javaType="java.util.List" ofType="OrderListVO" autoMapping="true"/>
+		</association>
+	</resultMap>
+	<select id="selectShipmentList" parameterType="vo.PagingVO" resultMap="shipMap">
+		SELECT S.SHIP_NO, S.DELIV_NO, S.EMP_NO, TO_CHAR(S.SHIP_DATE,'YYYY-MM-DD') SHIP_DATE, 
+		       TO_CHAR(S.SHIP_P_DATE,'YYYY-MM-DD') SHIP_P_DATE, S.SHIP_PROG,
+		       E.EMP_NAME,
+		       D.DELIV_PROG,
+		       O.OR_NO, O.BUYER_NO, O.OR_STATUS,
+		       OP.ORP_NO, OP.PROD_NO, OP.ORP_QTY, OP.ORP_PRICE,
+		       P.PROD_NAME, P.PROD_STAND_SIZE,
+		       B.BUYER_NAME,
+		       LP.LPROD_NAME
+		FROM OR_SHIPMENT S LEFT OUTER JOIN OR_DELIVERY D ON(D.DELIV_NO=S.DELIV_NO)
+		                   LEFT OUTER JOIN ORDERP O ON(O.OR_NO=D.OR_NO)
+		                   LEFT OUTER JOIN BUYER B ON(B.BUYER_NO=O.BUYER_NO)
+		                   LEFT OUTER JOIN EMPLOYEE E ON(E.EMP_NO=S.EMP_NO)
+		                   LEFT OUTER JOIN OR_PLIST OP ON(OP.OR_NO=O.OR_NO)
+		                   LEFT OUTER JOIN PROD P ON(P.PROD_NO=OP.PROD_NO)
+		                   LEFT OUTER JOIN LPROD LP ON(LP.LPROD_NO=P.LPROD_NO)
+		WHERE D.DELIV_PROG LIKE 'OR02'
+		ORDER BY SHIP_NO DESC
+	</select>
+	
+	
+</mapper>
