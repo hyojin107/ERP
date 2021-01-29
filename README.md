@@ -47,30 +47,73 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 
 ### 3. ERP 기능
 🔷 **구매요청서** <br/>
-<img width="410" alt="구매요청서" src="https://user-images.githubusercontent.com/49690185/105695833-e12ae900-5f45-11eb-91c6-42384e8f0b44.png">
+<img width="500" alt="구매요청서" src="https://user-images.githubusercontent.com/49690185/105695833-e12ae900-5f45-11eb-91c6-42384e8f0b44.png">
 - _원자재 추가_ 를 클릭할 시, 등록된 원자재를 보여줍니다.
 - 구매할 원자재를 선택하여 구매 요청을 합니다.
 - 잘못 선택한 원자재 목록을 '_선택삭제_'를 통해 삭제할 수 있습니다.
 <br/>
 
 🔷 **구매요청 현황** <br/>
-<img width="410" alt="구매요청현황" src="https://user-images.githubusercontent.com/49690185/105696194-54ccf600-5f46-11eb-8a5f-36465c311815.png">
+<img width="500" alt="구매요청현황" src="https://user-images.githubusercontent.com/49690185/105696194-54ccf600-5f46-11eb-8a5f-36465c311815.png">
 - _전체, 진행중, 발주완료 탭_ 으로 구분하여 리스트를 출력합니다.
 - 작성일자, 작성자명 별로 _검색_ 이 가능합니다.
 - 작성자명에서 '_찾기_'를 클릭할 시, 사원 리스트가 출력됩니다.
 <br/>
 
 🔷 **발주신청서** <br/>
-<img width="410" alt="발주신청서" src="https://user-images.githubusercontent.com/49690185/105698643-7e3b5100-5f49-11eb-8747-2e2896b6f368.png">
+<img width="500" alt="발주신청서" src="https://user-images.githubusercontent.com/49690185/105698643-7e3b5100-5f49-11eb-8747-2e2896b6f368.png">
+- 구매요청서 상의 내역 혹은 발주하고자 하는 물품을 발주할 수 있습니다.
 - '일반 발주 추가' : 저장된 원자재 **이외의 물품** 을 발주시에 사용하며, '일반 발주 추가'를 클릭 시, 발주 목록에 빈칸으로 목록이 추가됩니다.
 - '삭제'버튼 : 구매요청이 들어온 요청목록을 삭제 할 수 있습니다.
 - '발주이동'버튼 : _구매요청 리스트_ 를 나타내는 테이블의 목록을 체크한 뒤, '발주이동'클릭 시 발주목록으로 추가합니다.
 <br/>
 
 🔷 **발주현황** <br/>
-<img width="410" alt="발주현황" src="https://user-images.githubusercontent.com/49690185/105699518-d32b9700-5f4a-11eb-983b-fe86fac6d6c7.png">
+<img width="500" alt="발주현황" src="https://user-images.githubusercontent.com/49690185/105699518-d32b9700-5f4a-11eb-983b-fe86fac6d6c7.png">
 - _전체, 진행중, 매입완료, 발주취소_ 탭으로 리스트를 보여주며, '진행중'탭에서는 발주취소와 매입등록을 할 수 있습니다.
 
+<br/>
+🔷 **매입신청서** <br/>
+<img width="500" alt="매입등록" src="https://user-images.githubusercontent.com/49690185/106266021-3ed37400-626b-11eb-9a7f-f45d2e468118.png">
+- 발주한 물품 중 매입한 목록을 등록합니다.
+- _거래처, 담당자_ 의 '_찾기_'버튼을 클릭 시, 저장된 거래처 혹은 담당자 목록을 보여주며, 리스트를 클릭하면 거래처 입력 폼에 자동으로 정보가 _입력_됩니다.
+
+<br/>
+🔷 **매입현황** <br/>
+<img width="500" alt="매입현황" src="https://user-images.githubusercontent.com/49690185/106266177-77734d80-626b-11eb-8cc6-2d73d56601ac.png">
+- _전체, 진행중, 입고완료, 매입취소, 반품처리 탭_ 으로 구분하여 리스트를 출력합니다.
+- _작성일자, 작성자명_ 별로 _검색_ 이 가능합니다.
+- 작성자명에서 '찾기'를 클릭할 시, 사원 리스트가 출력되며, 출력된 리스트를 클릭하면 정보가 해당 폼에 자동으로 입력됩니다.
+- 진행중 탭에서 '_매입취소_'를 할 수 있습니다.
+
+<br/>
+🔷 **반품신청** <br/>
+<img width="500" alt="반품신청 step1" src="https://user-images.githubusercontent.com/49690185/106266495-d46f0380-626b-11eb-8f0d-8d4f6c913621.png">
+<img width="500" alt="반품신청 step2" src="https://user-images.githubusercontent.com/49690185/106266580-f36d9580-626b-11eb-97d2-58212051ba17.png">
+<img width="500" alt="반품신청 step3" src="https://user-images.githubusercontent.com/49690185/106266608-fb2d3a00-626b-11eb-8dbc-9a75d332ccce.png">
+- 반품신청은 2단계를 거칩니다.
+- Step1 에서는 매입한 물품 리스트가 출력되며, 이 중 하나를 _선택_ 합니다.
+- Step2 에서는 step1에서 선택한 매입 목록에 포함된 물품 리스트가 출력 되며, 이 중에서 _반품할 목록_ 을 선택하여 반품 등록을 진행합니다.
+- 반품등록을 성공적으로 완료되면, '반품 신청이 완료되었습니다.'가 출력됩니다.
+
+<br/>
+🔷 **반품현황** <br/>
+<img width="500" alt="반품현황" src="https://user-images.githubusercontent.com/49690185/106267480-0cc31180-626d-11eb-8218-d2e0c4ca5c53.png">
+- _전체, 진행중, 출고완료, 반품취소 탭_ 으로 구분하여 반품 리스트를 보여줍니다.
+- 진행중인 탭에서 리스트를 선택하여 _반품취소_ 를 할 수 있습니다.
+
+<br/>
+🔷 **거래처등록** <br/>
+<img width="500" alt="거래처등록" src="https://user-images.githubusercontent.com/49690185/106267242-ba81f080-626c-11eb-9448-8b204505dc52.png">
+- 발주하는 업체 혹은 판매하는 업체 등의 거래처를 등록합니다.
+- 등록된 거래처는 후에 검색 시에도 이용됩니다.
+- 우편번호는 카카오API 를 사용하여 나타냈습니다.
+
+<br/>
+🔷 **거래처조회** <br/>
+<img width="500" alt="거래처조회" src="https://user-images.githubusercontent.com/49690185/106267528-219fa500-626d-11eb-90ca-44c1922ea902.png">
+- 등록된 래처를 조회합니다.
+- DataTable API를 이용하여 리스트를 조회하였으며, '페이지네이션, 리스트 복사, 엑셀파일로 저장, 인쇄, 검색'기능을 지원합니다.
 
 
 
