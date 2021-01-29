@@ -88,9 +88,7 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 
 <br/>
 🔷 **반품신청** <br/>
-<img width="500" alt="반품신청 step1" src="https://user-images.githubusercontent.com/49690185/106266495-d46f0380-626b-11eb-8f0d-8d4f6c913621.png">
-<img width="500" alt="반품신청 step2" src="https://user-images.githubusercontent.com/49690185/106266580-f36d9580-626b-11eb-97d2-58212051ba17.png">
-<img width="500" alt="반품신청 step3" src="https://user-images.githubusercontent.com/49690185/106266608-fb2d3a00-626b-11eb-8dbc-9a75d332ccce.png">
+<img width="1000" alt="반품신청" src="https://user-images.githubusercontent.com/49690185/106268272-33ce1300-626e-11eb-9c5c-eee2f8cdfcb9.png">
 - 반품신청은 2단계를 거칩니다.
 - Step1 에서는 매입한 물품 리스트가 출력되며, 이 중 하나를 _선택_ 합니다.
 - Step2 에서는 step1에서 선택한 매입 목록에 포함된 물품 리스트가 출력 되며, 이 중에서 _반품할 목록_ 을 선택하여 반품 등록을 진행합니다.
