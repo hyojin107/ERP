@@ -54,6 +54,7 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 🔹 **Spring Security 적용** <br/>
 <img width="1000" alt="시큐리티" src="https://user-images.githubusercontent.com/49690185/106271933-91189300-6273-11eb-90da-662fe0b999d8.png">
 - spring security를 사용하여, 로그인 처리와 접근제한, 에러페이지를 적용하였습니다.
+<br/>
 
 🔹 **구매요청서** <br/>
 <img width="500" alt="구매요청서" src="https://user-images.githubusercontent.com/49690185/105695833-e12ae900-5f45-11eb-91c6-42384e8f0b44.png">
