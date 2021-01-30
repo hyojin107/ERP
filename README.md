@@ -14,7 +14,7 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 <br/>
 
 ### 1. 👉개발 환경
-- Java 1.8
+- jdk 1.8
 - Spring Faramework 4.3.27
 - Spring security 4.2.15
 - ORACLE DB 11g
