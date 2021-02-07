@@ -49,7 +49,6 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 <img width="1000" alt="ERD" src="https://user-images.githubusercontent.com/49690185/106271386-ca043800-6272-11eb-97d1-fb04fe294b82.png">
 <br/><br/>
 
-#erp
 ## 4. ERP 기능
 
 🔹 **Spring Security 적용** <br/>
