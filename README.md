@@ -6,9 +6,9 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 <br/>
 
 ## 🙌목차 
-1. [개발환경](#1.-개발-환경)
+1. [개발환경](#개발-환경)
 2. [구현 기능 및 담당역할](#구현-기능-및-담당역할)
-3. [Database 모델링](#Database-모델링)
+3. [Database 모델링](#database-모델링)
 4. [ERP 기능](#erp-기능)
 
 <br/>
