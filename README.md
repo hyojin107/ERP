@@ -1,4 +1,4 @@
-# ERP
+# 😄 ERP
 ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다.
 본 프로젝트에서는 회사의 구매, 영업, 회계, 생산, 인적 자원활동 등 비즈니스 프로세스를 통합 관리하는 소프트웨어를 개발하였습니다.
 
@@ -6,10 +6,10 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 <br/>
 
 ## 🙌목차 
-1. [개발환경](#1.-개발-환경-)
-2. [구현 기능 및 담당역할](#구현-기능-및-담당역할-)
-3. [Database 모델링](#database-모델링-)
-4. [ERP 기능](#erp-기능)
+1. [개발환경](#1-개발-환경-)
+2. [구현 기능 및 담당역할](#2-구현-기능-및-담당역할-)
+3. [Database 모델링](#3-database-모델링-)
+4. [ERP 기능](#4-erp-기능)
 
 <br/>
 
@@ -22,7 +22,7 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 
 <br/>
 
-## 구현 기능 및 담당역할 🙋‍♀️
+## 2. 구현 기능 및 담당역할 🙋‍♀️
 - EXERD를 활용하여 **DB를 설계**하고, 논리,물리ERD를 구현하여 구축
 - 단어사전, 용어사전을 정의하여 DB에 저장될 데이터의 이름들을 미리 동일시하기
 - 데이터들 사이의 관계를 정의하여 참조 관계 정의
@@ -45,11 +45,11 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
     - QR 코드를 이용한 **근태 등록** 기능
 <br/>
 
-## Database 모델링 🌞
+## 3. Database 모델링 🌞
 <img width="1000" alt="ERD" src="https://user-images.githubusercontent.com/49690185/106271386-ca043800-6272-11eb-97d1-fb04fe294b82.png">
 <br/><br/>
 
-## ERP 기능
+## 4. ERP 기능
 
 🔹 **Spring Security 적용** <br/>
 <img width="1000" alt="시큐리티" src="https://user-images.githubusercontent.com/49690185/106271933-91189300-6273-11eb-90da-662fe0b999d8.png">
