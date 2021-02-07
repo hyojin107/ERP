@@ -7,7 +7,7 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 
 ## 🙌목차 
 1. [개발환경](#1-개발-환경-)
-2. [구현 기능 및 담당역할](#2-구현-기능-및-담당역할-)
+2. [구현 기능 및 담당역할](#2-구현-기능-및-담당역할-♀️)
 3. [Database 모델링](#3-database-모델링-)
 4. [ERP 기능](#4-erp-기능)
 
@@ -49,7 +49,7 @@ ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다
 <img width="1000" alt="ERD" src="https://user-images.githubusercontent.com/49690185/106271386-ca043800-6272-11eb-97d1-fb04fe294b82.png">
 <br/><br/>
 
-## 4. ERP 기능
+## 4. ERP 기능 🎈
 
 🔹 **Spring Security 적용** <br/>
 <img width="1000" alt="시큐리티" src="https://user-images.githubusercontent.com/49690185/106271933-91189300-6273-11eb-90da-662fe0b999d8.png">
