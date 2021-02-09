@@ -1,7 +1,6 @@
 # 😄 ERP
 ERP란? Enterprise Resource Planning( 전사적 자원관리)의 약어입니다. <br/>
 본 프로젝트에서는 회사의 구매, 영업, 회계, 생산, 인적 자원활동 등 비즈니스 프로세스를 통합 관리하는 소프트웨어를 개발하였습니다. <br/>
-
 이 중 buy(구매), account(회계), emp(인사), order(영업), product(자재), wareHouse(생산) 탭으로 나누어, '구매'탭을 중심으로 개발하였습니다.
 
 <br/>
